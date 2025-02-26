@@ -1,25 +1,28 @@
+mod error;
 mod utils;
-mod lua_plugins;
+mod plugins;
+mod keymap;
+mod keymap_remapping;
+
+use error::{Result, Error};
 
 use nvim_oxi as nvim;
+use nvim::mlua as mlua;
 
 use nvim::{Dictionary, Function};
 
 fn setup_config(_: ()) {
     nvim::print!("Setting up nvim-config");
 
-    if let Ok(_) = lua_plugins::setup_lua_plugin("lazy") {
-
-    }
+    plugins::setup_plugins();
+    _ = keymap::setup_keymaps();
 }
 
 #[nvim::plugin]
 fn libnvim_config() -> nvim::Result<Dictionary> {
     let mut res = Dictionary::new();
 
-    let fun: Function<(), ()> = Function::from_fn(setup_config);
-
-    res.insert("setup", fun);
+    res.insert("setup", Function::from_fn(setup_config));
 
     Ok(res)
 }

@@ -1,11 +1,11 @@
+use crate::Result;
+
 use nvim_oxi as nvim;
 use nvim::mlua as mlua;
 
 use mlua::prelude::*;
 
-pub use mlua::prelude::LuaResult;
-
-pub fn call_lua_func<'lua, A, R>(func: &str, args: A) -> LuaResult<R>
+pub fn call_lua_func<'lua, A, R>(func: &str, args: A) -> Result<R>
 where
     A: IntoLuaMulti<'lua>,
     R: FromLuaMulti<'lua>,
@@ -15,10 +15,10 @@ where
 
     let result = lua_func.call(args);
     match result {
-        Ok(ret) => R::from_lua_multi(ret, lua),
+        Ok(ret) => Ok(R::from_lua_multi(ret, lua)?),
         Err(e) => {
             nvim::print!("Lua '{func}' call failed: {e}");
-            Err(e)
-        }
+            Err(e.into())
+        },
     }
 }
