@@ -1,14 +1,14 @@
 use std::collections::HashMap;
+use std::panic::catch_unwind;
 
 use crate::Result;
 
 use crate::nvim::api as api;
 use api::{types::Mode, opts::SetKeymapOpts};
 
-pub type NvimFunc = String;
-pub type NvimKeymap = HashMap<String, NvimFunc>;
+pub type NvimKeymap = HashMap<String, String>;
 
-const ALL_KEYS: [&str; 203] = [
+const ALL_KEYS: [&str; 185] = [
     // Lowercase letters
     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
 
@@ -23,7 +23,6 @@ const ALL_KEYS: [&str; 203] = [
 
     // Function keys
     "<F1>", "<F2>", "<F3>", "<F4>", "<F5>", "<F6>", "<F7>", "<F8>", "<F9>", "<F10>", "<F11>", "<F12>",
-    // Add more F keys if needed (up to F24 or higher, depending on terminal support)
 
     // Navigation keys
     "<Up>", "<Down>", "<Left>", "<Right>", "<Home>", "<End>", "<PageUp>", "<PageDown>",
@@ -40,14 +39,8 @@ const ALL_KEYS: [&str; 203] = [
     "<C-n>", "<C-o>", "<C-p>", "<C-q>", "<C-r>", "<C-s>", "<C-t>", "<C-u>", "<C-v>", "<C-w>", "<C-x>", "<C-y>", "<C-z>",
     "<C-0>", "<C-1>", "<C-2>", "<C-3>", "<C-4>", "<C-5>", "<C-6>", "<C-7>", "<C-8>", "<C-9>",
     "<C-[>", "<C-]>",  // Control with brackets
-    "<M-a>", "<M-b>", "<M-c>",  // ... and so on for all letters, numbers, and some symbols with Meta (Alt)
-     "<S-a>", "<S-b>", "<S-c>", // ... and shift
-    "<M-x>", "<S-x>", "<C-x>",  // Placeholder - represent ALL combinations
-    "<D-x>",  // ... and command (macOS) - This is often the same as Meta.
     "<C-Space>",
-    "<S-Up>", "<S-Down>", "<S-Left>", "<S-Right>",  // Shift + Arrow Keys
-    "<C-Up>", "<C-Down>", "<C-Left>", "<C-Right>",  // Ctrl + Arrow Keys
-    "<M-Up>", "<M-Down>", "<M-Left>", "<M-Right>",    // Meta + Arrow Keys (etc. - many combinations possible)
+    "<C-Up>", "<C-Down>", "<C-Left>", "<C-Right>",
 
     // Mouse (basic)
     "<LeftMouse>", "<RightMouse>", "<MiddleMouse>",
@@ -61,9 +54,15 @@ const ALL_KEYS: [&str; 203] = [
 ];
 
 fn clear_keymap(mode: Mode) -> Result<()> {
-    for binding in api::get_keymap(mode) {
-        api::del_keymap(mode, &binding.lhs)?;
-    }
+    // Iterating over the maps can panic if there is a binding for a mode nvim-oxi doesn't support
+    _ = catch_unwind(|| {
+        for binding in api::get_keymap(mode) {
+            if binding.lhs.starts_with("<Plug>") {
+                continue;
+            }
+            _ = api::del_keymap(mode, &binding.lhs);
+        }
+    });
 
     for key in ALL_KEYS {
         api::set_keymap(mode, key, "", &SetKeymapOpts::default())?;
@@ -85,4 +84,32 @@ pub fn setup_keymap(mode: Mode, keymap: NvimKeymap) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[macro_export]
+macro_rules! cmd_call {
+    ($str:expr) => {
+        format!(":{}<CR>", $str)
+    };
+}
+
+#[macro_export]
+macro_rules! nvim_keymap {
+    (@inner ( $str:expr )) => {
+        ($str.to_string(), $str.to_string())
+    };
+
+    (@inner ( $str1:expr => $str2:expr )) => {
+        ($str1.to_string(), $str2.to_string())
+    };
+
+    (@inner ( $str1:expr => $str2:expr )) => {
+        ($str1.to_string(), $str2.to_string())
+    };
+
+    ($( $item:tt ),* $(,)?) => {
+        NvimKeymap::from([
+            $( nvim_keymap!(@inner $item) ),*
+        ])
+    };
 }

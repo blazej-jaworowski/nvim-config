@@ -4,7 +4,7 @@ mod plugins;
 mod keymap;
 mod keymap_remapping;
 
-use error::{Result, Error};
+pub use error::{Result, Error};
 
 use nvim_oxi as nvim;
 use nvim::mlua as mlua;
@@ -15,7 +15,7 @@ fn setup_config(_: ()) {
     nvim::print!("Setting up nvim-config");
 
     plugins::setup_plugins();
-    _ = keymap::setup_keymaps();
+    keymap::setup_keymaps();
 }
 
 #[nvim::plugin]

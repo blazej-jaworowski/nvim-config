@@ -1,18 +1,57 @@
-use crate::Result;
 use crate::keymap_remapping::{NvimKeymap, setup_keymap};
+use crate::{nvim_keymap, cmd_call};
 use crate::nvim::api::types::Mode;
-use crate::plugins::leap::leap_cmd;
+use crate::nvim;
 
-fn normal_keymap() -> NvimKeymap {
-    NvimKeymap::from([
-        ("a".to_string(), "a".to_string()),
-        ("d".to_string(), "d".to_string()),
-        (":".to_string(), ":".to_string()),
-        ("f".to_string(), format!(":{}<CR>", leap_cmd())),
-    ])
+fn motion_keymap() -> NvimKeymap {
+    nvim_keymap![
+        // Movement
+        ("j" => "h"), ("k" => "j"), ("l" => "k"), (";" => "l"),
+        ("K" => cmd_call!("Neoscroll 10")), ("L" => cmd_call!("Neoscroll -10")),
+        ("!" => "^"), ("$"),
+        ("w"), ("b"), ("e"),
+        ("f" => cmd_call!("Leap")),
+        ("gg"), ("G"),
+
+        // Window focus
+        (" j" => "<C-w>h"),
+        (" k" => "<C-w>j"),
+        (" l" => "<C-w>k"),
+        (" ;" => "<C-w>l"),
+
+        // Mode-change
+        ("a"), ("i"), ("A"), ("I"),
+        ("o"), ("O"),
+        ("v"), ("V"), ("<C-v>"),
+        (":"),
+        ("<ESC>"),
+
+        // Editing
+        ("r"), ("s"), ("x"),
+        ("d"), ("y"),
+        ("p"), ("P"),
+
+        // Other
+        ("<CR>"),
+
+        // Undo
+        ("u"), ("U" => "<C-r>"),
+        (" u" => cmd_call!("UndotreeToggle")),
+
+        // Search
+        ("/"),
+    ]
 }
 
-pub fn setup_keymaps() -> Result<()> {
-    setup_keymap(Mode::Normal, normal_keymap())?;
-    Ok(())
+pub fn setup_keymaps() {
+    let motion_modes = [
+        Mode::Normal,
+        Mode::Visual,
+    ];
+
+    for mode in motion_modes {
+        if let Err(e) = setup_keymap(mode, motion_keymap()) {
+            nvim::print!("Failed to setup motion keymap for {mode:?}: {e}");
+        };
+    };
 }
