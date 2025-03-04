@@ -5,6 +5,7 @@ use crate::mlua::Value;
 mod lua_plugins;
 pub mod leap;
 pub mod neoscroll;
+pub mod telescope;
 
 fn setup_autopairs() -> Result<()> {
     let plugin = lua_plugins::LuaPlugin::<(), ()>::builder()
@@ -66,6 +67,10 @@ pub fn setup_plugins() {
 
     if let Err(e) = neoscroll::setup_neoscroll() {
         nvim::print!("Failed to setup neoscroll: {e}");
+    }
+
+    if let Err(e) = telescope::setup_telescope() {
+        nvim::print!("Failed to setup telescope: {e}");
     }
 
     if let Err(e) = setup_dirbuf() {

@@ -75,13 +75,13 @@ R: FromLuaMulti<'lua>,
                 nvim::print!("Failed to run pre_func for {}: {e}", self.name);
                 e
             })?;
-            a.into_lua_multi(&lua)?
+            a.into_lua_multi(lua)?
         } else {
-            lua_value!().into_lua_multi(&lua)?
+            lua_value!([]).into_lua_multi(lua)?
         };
 
         let result: R = if let Some(f) = &self.setup_func {
-            utils::require_call_func(&self.name, &f, arg)?
+            utils::require_call_func(&self.name, f, arg)?
         } else {
             if self.post_func.is_some() {
                 nvim::print!("No setup_func, but post_func given. Ignoring it.");
@@ -123,6 +123,7 @@ R: FromLuaMulti<'lua>,
 
 }
 
+#[allow(dead_code)]
 impl<'lua, A, R> LuaPluginBuilder<'lua, A, R>
 where
 A: IntoLuaMulti<'lua>,
@@ -136,7 +137,7 @@ R: FromLuaMulti<'lua>,
     }
 
     pub fn build(self) -> LuaPlugin<'lua, A, R> {
-        if self.plugin.name == "" {
+        if self.plugin.name.is_empty() {
             nvim::print!("WARNING: Creating a plugin without a name");
         }
         self.plugin.clone()
@@ -168,6 +169,7 @@ R: FromLuaMulti<'lua>,
 
 }
 
+#[allow(dead_code)]
 pub fn setup_plugins<'lua>(plugins: impl IntoIterator<Item = LuaPlugin<'lua>>)
 {
     for plugin in plugins {

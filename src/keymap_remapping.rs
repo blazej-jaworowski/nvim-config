@@ -78,6 +78,7 @@ pub fn setup_keymap(mode: Mode, keymap: NvimKeymap) -> Result<()> {
         api::set_keymap(
             mode, &binding, &func,
             &SetKeymapOpts::builder()
+                .silent(true)
                 .noremap(true)
                 .build()
         )?;

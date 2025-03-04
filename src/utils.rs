@@ -1,4 +1,5 @@
 use crate::{mlua, nvim, utils, Result};
+use nvim::api::types::CommandArgs;
 
 use mlua::{FromLuaMulti, IntoLuaMulti, Function, Table};
 
@@ -52,31 +53,78 @@ R: FromLuaMulti<'lua>,
     require_call_func(plugin_name, "setup", args)
 }
 
+pub fn wrap_command<F>(command: F) -> impl Fn(CommandArgs)
+where
+F: Fn(CommandArgs) -> Result<()>,
+{
+   move |args: CommandArgs| {
+        if let Err(e) = command(args) {
+            nvim::print!("Command failed: {e}");
+        }
+    }
+}
+
 #[macro_export]
-macro_rules! lua_value {
-    // Empty table
-    ($({})?) => {{
-        use $crate::mlua;
-        mlua::lua().create_table()?
+macro_rules! lua_tuple {
+    () => {
+        ()
+    };
+
+    ($( $value:tt ),* $(,)? ) => {{
+        use $crate::lua_value;
+        ( $( lua_value!($value) ),* )
+    }};
+}
+
+#[macro_export]
+macro_rules! lua_table {
+    () => {{
+        use $crate::mlua::{lua, Value};
+        Value::Table(lua().create_table()?)
     }};
 
-    // Process nested tables recursively
-    (@process $lua:ident { $($inner_key:expr => $inner_value:tt),* $(,)? }) => {
-        Value::Table($lua.create_table_from(
-            [ $( ($inner_key.to_string(), lua_value!(@process $lua $inner_value)) ),* ]
+    ($( $key:expr => $value:tt ),* $(,)? ) => {{
+        use $crate::{mlua::{lua, Value}, lua_value};
+        Value::Table(lua().create_table_from(
+            [ $( ($key.to_string(), lua_value!($value)) ),* ]
         )?)
-    };
+    }};
+}
 
-    // Process scalar values with .into_lua()
-    (@process $lua:ident $val:expr) => {
-        $val.into_lua(&$lua)?
-    };
+#[macro_export]
+macro_rules! lua_array {
+    () => {{
+        use $crate::mlua::{lua, Value};
+        Value::Table(lua().create_table()?)
+    }};
 
-    // Entry point: start building Lua table
+    ($( $value:tt ),* $(,)? ) => {{
+        use $crate::{mlua::{lua, Value}, lua_value};
+        Value::Table(lua().create_sequence_from(
+            [ $( lua_value!($value) ),* ]
+        )?)
+    }};
+}
+
+#[macro_export]
+macro_rules! lua_value {
+    ({ $( $key:expr => $value:tt ),* $(,)? }) => {{
+        use $crate::lua_table;
+        lua_table!{$( $key => $value ),*}
+    }};
+
+    ([ $( $value:tt ),* $(,)? ]) => {{
+        use $crate::lua_array;
+        lua_array![$( $value ),*]
+    }};
+
+    (( $( $value:tt ),* $(,)? )) => {{
+        use $crate::lua_tuple;
+        lua_tuple!($( $value ),*)
+    }};
+
     ($value:tt) => {{
-        use $crate::mlua::{self, Value, IntoLua};
-        let lua = mlua::lua();
-
-        lua_value!(@process lua $value)
+        use $crate::mlua::{IntoLua, lua};
+        $value.into_lua(&lua())?
     }};
 }

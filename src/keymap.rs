@@ -12,6 +12,7 @@ fn motion_keymap() -> NvimKeymap {
         ("w"), ("b"), ("e"),
         ("f" => cmd_call!("Leap")),
         ("gg"), ("G"),
+        ("<" => "<C-o>"), (">" => "<C-i>"),
 
         // Window focus
         (" j" => "<C-w>h"),
@@ -33,6 +34,7 @@ fn motion_keymap() -> NvimKeymap {
 
         // Other
         ("<CR>"),
+        (" e" => cmd_call!("Dirbuf .")),
 
         // Undo
         ("u"), ("U" => "<C-r>"),
@@ -40,6 +42,8 @@ fn motion_keymap() -> NvimKeymap {
 
         // Search
         ("/"),
+        ("zf" => cmd_call!("TelescopeCall find_files")),
+        ("zd" => cmd_call!("TelescopeCall live_grep")),
     ]
 }
 

@@ -1,42 +1,42 @@
-use std::collections::HashMap;
+use crate::utils;
+use crate::{Result, Error};
+use crate::nvim::api::{self, types::{CommandArgs, CommandNArgs}};
+use crate::mlua::{self, Table, Function, Value};
+use crate::lua_value;
 
 use nvim_oxi::api::opts::CreateCommandOpts;
 
-use crate::utils;
-use crate::Result;
-use crate::nvim::api::{self, types::{CommandArgs, CommandNArgs}};
-use crate::mlua::{self, Table, Function, Value, IntoLua};
-
 pub fn setup_neoscroll() -> Result<()> {
     let neoscroll: Table = utils::require_plugin("neoscroll")?;
-    let lua = mlua::lua();
 
     let setup_func: Function = neoscroll.get("setup")?;
-    _ = setup_func.call::<_, Value>(HashMap::from([
-        ("mappings", Value::Table(lua.create_table()?)),
-        ("hide_cursor", false.into_lua(lua)?),
-    ]))?;
+    _ = setup_func.call::<_, Value>(lua_value!({
+        "mappings" => {},
+        "hide_cursor" => false,
+    }))?;
 
     let scroll_func: Function = neoscroll.get("scroll")?;
     let scroll_func_key = mlua::lua().create_registry_value(scroll_func)?;
 
-    api::create_user_command("Neoscroll", move |args: CommandArgs| {
-        let scroll_func: Function = mlua::lua().registry_value(&scroll_func_key).unwrap();
+    api::create_user_command(
+        "Neoscroll",
+        utils::wrap_command(move |args: CommandArgs| -> Result<()> {
+            let scroll_func: Function = mlua::lua().registry_value(&scroll_func_key)?;
 
-        let [amount,] = args.fargs.as_slice() else {
-            return;
-        };
+            let [amount,] = args.fargs.as_slice() else {
+                return Err(Error::InvalidType);
+            };
 
-        let amount: i64 = amount.parse().unwrap();
+            let amount: i64 = amount.parse().map_err(|_| Error::InvalidType)?;
 
-        _ = scroll_func.call::<_, Value>((
-            Value::Integer(amount),
-            Value::Boolean(false),
-            Value::Integer(100),
-            Value::String(lua.create_string("quadratic").unwrap()),
-        ));
+            _ = scroll_func.call::<_, Value>(lua_value!((
+                amount, false, 100, "quadratic"
+            )))?;
 
-    }, &CreateCommandOpts::builder().nargs(CommandNArgs::One).build())?;
+            Ok(())
+        }),
+        &CreateCommandOpts::builder().nargs(CommandNArgs::One).build()
+    )?;
 
     Ok(())
 }
