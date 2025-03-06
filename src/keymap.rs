@@ -1,4 +1,6 @@
-use crate::keymap_remapping::{NvimKeymap, setup_keymap};
+use crate::keymap_remapping::{setup_keymap, NvimKeymap};
+use crate::plugins::leap::leap;
+use crate::plugins::neoscroll::neoscroll;
 use crate::nvim_keymap;
 use crate::nvim::api::types::Mode;
 use crate::nvim;
@@ -7,10 +9,10 @@ fn motion_keymap() -> NvimKeymap {
     nvim_keymap![
         // Movement
         ("j" => ["h"]), ("k" => ["j"]), ("l" => ["k"]), (";" => ["l"]),
-        ("K" => "Neoscroll 10"), ("L" => "Neoscroll -10"),
+        ("K" => ! neoscroll(10)), ("L" => ! neoscroll(-10)),
         ("!" => ["^"]), ("$"),
         ("w"), ("b"), ("e"),
-        ("f" => "Leap"),
+        ("f" => ! leap()),
         ("gg"), ("G"),
         ("<" => ["<C-o>"]), (">" => ["<C-i>"]),
 
@@ -19,6 +21,11 @@ fn motion_keymap() -> NvimKeymap {
         (" k" => ["<C-w>j"]),
         (" l" => ["<C-w>k"]),
         (" ;" => ["<C-w>l"]),
+
+        // Window management
+        (" x" => ["<C-w>c"]),
+        (" c" => ["<C-w>s"]),
+        (" v" => ["<C-w>v"]),
 
         // Mode-change
         ("a"), ("i"), ("A"), ("I"),
@@ -29,7 +36,9 @@ fn motion_keymap() -> NvimKeymap {
 
         // Editing
         ("r"), ("s"), ("x"),
+        ("S"),
         ("d"), ("y"),
+        ("D"), ("Y"),
         ("p"), ("P"),
 
         // Other
@@ -53,8 +62,10 @@ pub fn setup_keymaps() {
         Mode::Visual,
     ];
 
+    let keymap = motion_keymap();
     for mode in motion_modes {
-        if let Err(e) = setup_keymap(mode, motion_keymap()) {
+        let keymap = keymap.clone();
+        if let Err(e) = setup_keymap(mode, keymap) {
             nvim::print!("Failed to setup motion keymap for {mode:?}: {e}");
         };
     };

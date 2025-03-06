@@ -1,17 +1,32 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 use std::panic::catch_unwind;
 
 use crate::Result;
 
 use crate::nvim::api as api;
 use api::{types::Mode, opts::SetKeymapOpts, Buffer};
+use crate::nvim;
 
+#[derive(Clone)]
 pub enum NvimAction {
     Keys(String),
     Command(String),
+    Function(Rc<dyn Fn() -> Result<()>>),
 }
 
 pub type NvimKeymap = HashMap<String, NvimAction>;
+
+// TODO: Create a separate type and implement Debug instead
+#[allow(dead_code)]
+pub fn print_keymap(keymap: &NvimKeymap) {
+    for (keys, action) in keymap {
+        nvim::print!("[{keys}] -> {}\n", match action {
+            NvimAction::Keys(k) => format!("[{k}]"),
+            NvimAction::Command(c) => c.to_owned(),
+            NvimAction::Function(_) => "<lua_function>".to_string(),
+        });
+    }
+}
 
 const ALL_KEYS: [&str; 185] = [
     // Lowercase letters
@@ -83,6 +98,21 @@ pub fn setup_keymap(mode: Mode, keymap: NvimKeymap) -> Result<()> {
         let rhs = match action {
             NvimAction::Keys(k) => k,
             NvimAction::Command(cmd) => format!(":{}<CR>", cmd),
+
+            NvimAction::Function(func) => {
+                api::set_keymap(
+                    mode, &binding, "",
+                    &SetKeymapOpts::builder()
+                        .silent(true)
+                        .callback(move |()| {
+                            if let Err(e) = (*func)() {
+                                nvim::print!("Keybind function failed: {e}");
+                            };
+                        })
+                        .build()
+                )?;
+                continue;
+            }
         };
         api::set_keymap(
             mode, &binding, &rhs,
@@ -124,6 +154,21 @@ pub fn setup_buf_keymap(buf: &mut Buffer, mode: Mode, keymap: NvimKeymap) -> Res
         let rhs = match action {
             NvimAction::Keys(k) => k,
             NvimAction::Command(cmd) => format!(":{}<CR>", cmd),
+
+            NvimAction::Function(func) => {
+                buf.set_keymap(
+                    mode, &binding, "",
+                    &SetKeymapOpts::builder()
+                        .silent(true)
+                        .callback(move |()| {
+                            if let Err(e) = (*func)() {
+                                nvim::print!("Keybind function failed: {e}");
+                            };
+                        })
+                        .build()
+                )?;
+                continue;
+            }
         };
         buf.set_keymap(
             mode, &binding, &rhs,
@@ -142,6 +187,11 @@ macro_rules! nvim_action {
     ([ $keys:expr ]) => {{
         use $crate::keymap_remapping::NvimAction;
         NvimAction::Keys($keys.into())
+    }};
+
+    (! $func:expr ) => {{
+        use $crate::keymap_remapping::NvimAction;
+        NvimAction::Function($func)
     }};
 
     ($cmd:expr) => {{

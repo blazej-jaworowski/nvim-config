@@ -54,13 +54,16 @@ fn lsp_define_command(command: &str, path: &str) -> Result<()> {
 fn lsp_define_commands() -> Result<()> {
     lsp_define_command("LspPeekDiagnostic", "vim.diagnostic.open_float")?;
     lsp_define_command("LspDiagnosticList", "vim.diagnostic.setloclist")?;
+
     lsp_define_command("LspGotoDefinition", "vim.lsp.buf.definition")?;
     lsp_define_command("LspGotoDeclaration", "vim.lsp.buf.declaration")?;
     lsp_define_command("LspGotoImplementation", "vim.lsp.buf.implementation")?;
     lsp_define_command("LspGotoTypeDefinition", "vim.lsp.buf.type_definition")?;
     lsp_define_command("LspGotoReferences", "vim.lsp.buf.references")?;
+
     lsp_define_command("LspHover", "vim.lsp.buf.hover")?;
     lsp_define_command("LspSignatureHelp", "vim.lsp.buf.signature_help")?;
+
     lsp_define_command("LspRename", "vim.lsp.buf.rename")?;
     lsp_define_command("LspCodeAction", "vim.lsp.buf.code_action")?;
     lsp_define_command_func("LspFormat", "vim.lsp.buf.format", |args| {
@@ -83,10 +86,22 @@ fn lsp_define_commands() -> Result<()> {
 
 fn lsp_setup_keymap() -> Result<()> {
     let normal_keymap = nvim_keymap!(
-        ("gd" => "LspGotoDefinition"),
-        (" q" => "LspDiagnosticList"),
+        (".d" => "LspGotoDefinition"),
+        (".D" => "LspGotoDeclaration"),
+        (".i" => "LspGotoDeclaration"),
+        (".t" => "LspGotoDeclaration"),
+        (".r" => "LspGotoReference"),
+        (".q" => "LspDiagnosticList"),
+        (".," => "LspPeekDiagnostic"),
+        (".." => "LspHover"),
+        (".s" => "LspSignatureHelp"),
+        (".ca" => "LspCodeAction"),
+        (".cr" => "LspRename"),
+        (".cf" => "LspFormat"),
     );
-    setup_buf_keymap(&mut Buffer::current(), Mode::Normal, normal_keymap)?;
+    for mode in [Mode::Normal, Mode::Visual].iter() {
+        setup_buf_keymap(&mut Buffer::current(), *mode, normal_keymap.clone())?;
+    }
     Ok(())
 }
 

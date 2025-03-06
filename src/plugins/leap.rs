@@ -1,19 +1,13 @@
-use std::collections::HashMap;
-
-use nvim_oxi::api::opts::CreateCommandOpts;
-use nvim_oxi::api::types::CommandArgs;
+use std::rc::Rc;
 
 use crate::utils;
 use crate::{nvim::{self, api}, mlua, Result};
 use crate::mlua::{Function, Value};
+use crate::lua_value;
 
-pub fn setup_leap() -> Result<()> {
-    let leap_func: Function = utils::require_get_func("leap", "leap")?;
-
-    let leap_func_key = mlua::lua().create_registry_value(leap_func)?;
-
-    api::create_user_command("Leap", move |_: CommandArgs| {
-        let func: Function = mlua::lua().registry_value(&leap_func_key).unwrap();
+pub fn leap() -> Rc<dyn Fn() -> Result<()>> {
+    Rc::new(|| {
+        let func: Function = mlua::lua().named_registry_value("leap_func")?;
 
         let focusable_windows = api::list_wins()
             .filter_map(|w| {
@@ -30,10 +24,16 @@ pub fn setup_leap() -> Result<()> {
                 }
             }).collect::<Vec<_>>();
 
-        _ = func.call::<_, Value>(HashMap::from([
-            ("target_windows", focusable_windows)
-        ]));
-    }, &CreateCommandOpts::default())?;
+        _ = func.call::<_, Value>(lua_value!({
+            "target_windows" => focusable_windows,
+        }));
 
+        Ok(())
+    })
+}
+
+pub fn setup_leap() -> Result<()> {
+    let leap_func: Function = utils::require_get_func("leap", "leap")?;
+    mlua::lua().set_named_registry_value("leap_func", leap_func)?;
     Ok(())
 }
