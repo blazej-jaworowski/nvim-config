@@ -4,9 +4,14 @@ use std::panic::catch_unwind;
 use crate::Result;
 
 use crate::nvim::api as api;
-use api::{types::Mode, opts::SetKeymapOpts};
+use api::{types::Mode, opts::SetKeymapOpts, Buffer};
 
-pub type NvimKeymap = HashMap<String, String>;
+pub enum NvimAction {
+    Keys(String),
+    Command(String),
+}
+
+pub type NvimKeymap = HashMap<String, NvimAction>;
 
 const ALL_KEYS: [&str; 185] = [
     // Lowercase letters
@@ -74,9 +79,54 @@ fn clear_keymap(mode: Mode) -> Result<()> {
 pub fn setup_keymap(mode: Mode, keymap: NvimKeymap) -> Result<()> {
     clear_keymap(mode)?;
 
-    for (binding, func) in keymap.into_iter() {
+    for (binding, action) in keymap.into_iter() {
+        let rhs = match action {
+            NvimAction::Keys(k) => k,
+            NvimAction::Command(cmd) => format!(":{}<CR>", cmd),
+        };
         api::set_keymap(
-            mode, &binding, &func,
+            mode, &binding, &rhs,
+            &SetKeymapOpts::builder()
+                .silent(true)
+                .noremap(true)
+                .build()
+        )?;
+    }
+
+    Ok(())
+}
+
+#[allow(dead_code)]
+fn clear_buf_keymap(buf: &mut Buffer, mode: Mode) -> Result<()> {
+    let buf_handle = buf.handle();
+
+    // This panics no matter what, don't really know why catch_unwind doesn't help
+    _ = catch_unwind(|| {
+        let mut buf = Buffer::from(buf_handle);
+
+         if let Ok(keymap) = buf.get_keymap(mode) {
+             for binding in keymap {
+                 if binding.lhs.starts_with("<Plug>") {
+                     continue;
+                 }
+                 _ = buf.del_keymap(mode, &binding.lhs);
+             }
+         }
+    });
+
+    Ok(())
+}
+
+pub fn setup_buf_keymap(buf: &mut Buffer, mode: Mode, keymap: NvimKeymap) -> Result<()> {
+    // clear_buf_keymap(buf, mode)?;
+
+    for (binding, action) in keymap.into_iter() {
+        let rhs = match action {
+            NvimAction::Keys(k) => k,
+            NvimAction::Command(cmd) => format!(":{}<CR>", cmd),
+        };
+        buf.set_keymap(
+            mode, &binding, &rhs,
             &SetKeymapOpts::builder()
                 .silent(true)
                 .noremap(true)
@@ -88,25 +138,29 @@ pub fn setup_keymap(mode: Mode, keymap: NvimKeymap) -> Result<()> {
 }
 
 #[macro_export]
-macro_rules! cmd_call {
-    ($str:expr) => {
-        format!(":{}<CR>", $str)
-    };
+macro_rules! nvim_action {
+    ([ $keys:expr ]) => {{
+        use $crate::keymap_remapping::NvimAction;
+        NvimAction::Keys($keys.into())
+    }};
+
+    ($cmd:expr) => {{
+        use $crate::keymap_remapping::NvimAction;
+        NvimAction::Command($cmd.into())
+    }};
 }
 
 #[macro_export]
 macro_rules! nvim_keymap {
-    (@inner ( $str:expr )) => {
-        ($str.to_string(), $str.to_string())
-    };
+    (@inner ( $str:expr )) => {{
+        use $crate::nvim_action;
+        ($str.to_string(), nvim_action!([ $str ]))
+    }};
 
-    (@inner ( $str1:expr => $str2:expr )) => {
-        ($str1.to_string(), $str2.to_string())
-    };
-
-    (@inner ( $str1:expr => $str2:expr )) => {
-        ($str1.to_string(), $str2.to_string())
-    };
+    (@inner ( $str:expr => $( $action:tt )* )) => {{
+        use $crate::nvim_action;
+        ($str.to_string(), nvim_action!($( $action )*))
+    }};
 
     ($( $item:tt ),* $(,)?) => {
         NvimKeymap::from([

@@ -86,7 +86,7 @@ macro_rules! lua_table {
     ($( $key:expr => $value:tt ),* $(,)? ) => {{
         use $crate::{mlua::{lua, Value}, lua_value};
         Value::Table(lua().create_table_from(
-            [ $( ($key.to_string(), lua_value!($value)) ),* ]
+            [ $( (lua_value!($key), lua_value!($value)) ),* ]
         )?)
     }};
 }
@@ -108,6 +108,11 @@ macro_rules! lua_array {
 
 #[macro_export]
 macro_rules! lua_value {
+    () => {{
+        use $crate::mlua::Value;
+        Value::NULL
+    }};
+
     ({ $( $key:expr => $value:tt ),* $(,)? }) => {{
         use $crate::lua_table;
         lua_table!{$( $key => $value ),*}

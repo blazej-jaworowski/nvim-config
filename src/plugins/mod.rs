@@ -1,9 +1,10 @@
-use crate::{lua_value, Result, utils};
-use crate::nvim::{self, api};
+use crate::{lua_value, nvim_dir, utils, Result};
+use crate::nvim::{self, api::{self, opts::OptionOpts}};
 use crate::mlua::Value;
 
 mod lua_plugins;
 pub mod leap;
+pub mod lsp;
 pub mod neoscroll;
 pub mod telescope;
 
@@ -26,12 +27,13 @@ fn setup_colorscheme() -> Result<()> {
 }
 
 fn setup_tree_sitter() -> Result<()> {
-    let tree_sitter_dir = "/home/b.jaworowski/.nvim";
+    let tree_sitter_dir = nvim_dir().join("tree_sitter");
+    let tree_sitter_dir = tree_sitter_dir.to_str().unwrap();
 
-    let current_rtp: String = api::get_option("runtimepath")?;
+    let current_rtp: String = api::get_option_value("runtimepath", &OptionOpts::builder().build())?;
     let modified_rtp = format!("{tree_sitter_dir},{current_rtp}");
 
-    api::set_option("runtimepath", modified_rtp)?;
+    api::set_option_value("runtimepath", modified_rtp, &OptionOpts::builder().build())?;
 
     utils::require_call_setup::<_, Value>("nvim-treesitter.configs", lua_value!({
         // "ensure_installed" => [ "c", "python", "lua" ],
@@ -79,5 +81,9 @@ pub fn setup_plugins() {
 
     if let Err(e) = setup_autopairs() {
         nvim::print!("Failed to setup autopairs: {e}");
+    }
+
+    if let Err(e) = lsp::setup_lsp() {
+        nvim::print!("Failed to setup lsp: {e}");
     }
 }

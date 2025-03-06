@@ -1,24 +1,24 @@
 use crate::keymap_remapping::{NvimKeymap, setup_keymap};
-use crate::{nvim_keymap, cmd_call};
+use crate::nvim_keymap;
 use crate::nvim::api::types::Mode;
 use crate::nvim;
 
 fn motion_keymap() -> NvimKeymap {
     nvim_keymap![
         // Movement
-        ("j" => "h"), ("k" => "j"), ("l" => "k"), (";" => "l"),
-        ("K" => cmd_call!("Neoscroll 10")), ("L" => cmd_call!("Neoscroll -10")),
-        ("!" => "^"), ("$"),
+        ("j" => ["h"]), ("k" => ["j"]), ("l" => ["k"]), (";" => ["l"]),
+        ("K" => "Neoscroll 10"), ("L" => "Neoscroll -10"),
+        ("!" => ["^"]), ("$"),
         ("w"), ("b"), ("e"),
-        ("f" => cmd_call!("Leap")),
+        ("f" => "Leap"),
         ("gg"), ("G"),
-        ("<" => "<C-o>"), (">" => "<C-i>"),
+        ("<" => ["<C-o>"]), (">" => ["<C-i>"]),
 
         // Window focus
-        (" j" => "<C-w>h"),
-        (" k" => "<C-w>j"),
-        (" l" => "<C-w>k"),
-        (" ;" => "<C-w>l"),
+        (" j" => ["<C-w>h"]),
+        (" k" => ["<C-w>j"]),
+        (" l" => ["<C-w>k"]),
+        (" ;" => ["<C-w>l"]),
 
         // Mode-change
         ("a"), ("i"), ("A"), ("I"),
@@ -34,16 +34,16 @@ fn motion_keymap() -> NvimKeymap {
 
         // Other
         ("<CR>"),
-        (" e" => cmd_call!("Dirbuf .")),
+        (" e" => "Dirbuf ."),
 
         // Undo
-        ("u"), ("U" => "<C-r>"),
-        (" u" => cmd_call!("UndotreeToggle")),
+        ("u"), ("U" => ["<C-r>"]),
+        (" u" => "UndotreeToggle"),
 
         // Search
         ("/"),
-        ("zf" => cmd_call!("TelescopeCall find_files")),
-        ("zd" => cmd_call!("TelescopeCall live_grep")),
+        ("zf" => "TelescopeCall find_files"),
+        ("zd" => "TelescopeCall live_grep"),
     ]
 }
 

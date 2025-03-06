@@ -8,5 +8,5 @@ name = "nvim_config"
 crate-type = ["cdylib"]
 
 [dependencies]
-nvim-oxi = { version = "0.5.1", features = ["mlua", "neovim-0-10"] }
+nvim-oxi = { version = "0.5.1", features = ["mlua", "neovim-nightly"] }
 thiserror = "2.0.11"
