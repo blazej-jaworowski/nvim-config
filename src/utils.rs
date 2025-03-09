@@ -1,7 +1,8 @@
-use crate::{mlua, nvim, utils, Result};
+use std::rc::Rc;
+use crate::{mlua, nvim, utils, Result, Error, lua_value};
 use nvim::api::types::CommandArgs;
 
-use mlua::{FromLuaMulti, IntoLuaMulti, Function, Table};
+use mlua::{FromLuaMulti, IntoLuaMulti, FromLua, Function, Table, Value};
 
 pub fn call_lua_func<'lua, A, R>(func: &str, args: A) -> Result<R>
 where
@@ -62,6 +63,39 @@ F: Fn(CommandArgs) -> Result<()>,
             nvim::print!("Command failed: {e}");
         }
     }
+}
+
+pub fn lua_get_value_path<'lua, T>(mut table: Table<'lua>, path: &str) -> Result<T>
+where
+T: FromLua<'lua>
+{
+    let parts: Vec<&str> = path.split(".").collect();
+    for (i, part) in parts.iter().enumerate() {
+        if i == parts.len() - 1 {
+            return Ok(table.get(*part)?)
+        } else {
+            table = table.get(*part)?
+        }
+    }
+
+    Err(Error::InvalidType)
+}
+
+pub fn lua_get_global_value_path<'lua, T>(path: &str) -> Result<T>
+where
+T: FromLua<'lua>
+{
+    lua_get_value_path(mlua::lua().globals(), path)
+}
+
+pub fn lua_registry_named_function(name: &str) -> Rc<dyn Fn() -> Result<()>> {
+    let name = name.to_string();
+    Rc::new(move || {
+        let func: Function = mlua::lua().named_registry_value(&name)?;
+        _ = func.call::<_, Value>(lua_value!(()));
+
+        Ok(())
+    })
 }
 
 #[macro_export]

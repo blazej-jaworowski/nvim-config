@@ -1,107 +1,76 @@
 use crate::Result;
-use crate::utils;
+use crate::utils::{self, lua_get_global_value_path, lua_registry_named_function};
 use crate::nvim;
-use crate::nvim::api::{self, Buffer, types::Mode, types::{CommandNArgs, CommandArgs}, opts::CreateCommandOpts};
-use crate::mlua::{self, Table, Function, Value, prelude::LuaResult, IntoLuaMulti};
+use crate::nvim::api::{Buffer, types::Mode};
+use crate::mlua::{self, Table, Function, Value, prelude::LuaResult};
 use crate::{lua_value, nvim_keymap};
 use crate::keymap_remapping::{NvimKeymap, setup_buf_keymap};
 
-fn lsp_define_command_func<'lua, A, F>(command: &str, path: &str, f: F) -> Result<()>
-where
-A: IntoLuaMulti<'lua>,
-F: Fn(CommandArgs) -> Result<A> + 'static,
-{
-    let lua = mlua::lua();
+fn lsp_setup_func(name: &str, path: &str) -> Result<()> {
+    let func: Function = lua_get_global_value_path(path)?;
+    mlua::lua().set_named_registry_value(name, func)?;
 
-    let mut obj: Table = lua.globals();
-    let mut func: Option<Function> = None;
-    let parts: Vec<&str> = path.split(".").collect();
-    for (i, part) in parts.iter().enumerate() {
-        if i == parts.len() - 1 {
-            func = Some(obj.get(*part)?);
-        } else {
-            obj = obj.get(*part)?;
-        }
-    }
-
-    let func = func.unwrap();
-    let func_key = lua.create_registry_value(func)?;
-
-    api::create_user_command(
-        command,
-        utils::wrap_command(move |args| -> Result<()> {
-            let func: Function = mlua::lua().registry_value(&func_key)?;
-
-            let args = f(args)?;
-
-            _ = func.call::<_, Value>(args)?;
-            
-            Ok(())
-        }),
-        &CreateCommandOpts::builder()
-            .nargs(CommandNArgs::Zero)
-            .range(api::types::CommandRange::WholeFile)
-            .build(),
-    )?;
-    
     Ok(())
 }
 
-fn lsp_define_command(command: &str, path: &str) -> Result<()> {
-    lsp_define_command_func(command, path, |_| { Ok(()) })
-}
-
 fn lsp_define_commands() -> Result<()> {
-    lsp_define_command("LspPeekDiagnostic", "vim.diagnostic.open_float")?;
-    lsp_define_command("LspDiagnosticList", "vim.diagnostic.setloclist")?;
+    lsp_setup_func("lsp_peek_diagnostic", "vim.diagnostic.open_float")?;
+    lsp_setup_func("lsp_diagnostic_list", "vim.diagnostic.setloclist")?;
 
-    lsp_define_command("LspGotoDefinition", "vim.lsp.buf.definition")?;
-    lsp_define_command("LspGotoDeclaration", "vim.lsp.buf.declaration")?;
-    lsp_define_command("LspGotoImplementation", "vim.lsp.buf.implementation")?;
-    lsp_define_command("LspGotoTypeDefinition", "vim.lsp.buf.type_definition")?;
-    lsp_define_command("LspGotoReferences", "vim.lsp.buf.references")?;
+    lsp_setup_func("lsp_goto_definition", "vim.lsp.buf.definition")?;
+    lsp_setup_func("lsp_goto_declaration", "vim.lsp.buf.declaration")?;
+    lsp_setup_func("lsp_goto_implementation", "vim.lsp.buf.implementation")?;
+    lsp_setup_func("lsp_goto_type_definition", "vim.lsp.buf.type_definition")?;
+    lsp_setup_func("lsp_goto_references", "vim.lsp.buf.references")?;
 
-    lsp_define_command("LspHover", "vim.lsp.buf.hover")?;
-    lsp_define_command("LspSignatureHelp", "vim.lsp.buf.signature_help")?;
+    lsp_setup_func("lsp_hover", "vim.lsp.buf.hover")?;
+    lsp_setup_func("lsp_signature_help", "vim.lsp.buf.signature_help")?;
 
-    lsp_define_command("LspRename", "vim.lsp.buf.rename")?;
-    lsp_define_command("LspCodeAction", "vim.lsp.buf.code_action")?;
-    lsp_define_command_func("LspFormat", "vim.lsp.buf.format", |args| {
-        let range = match args.range {
-            0 => Value::Nil,
-            _ => lua_value!({
-                "start" => [args.line1, 0usize],
-                "end" => [args.line2, 0usize],
-            }),
-        };
-        Ok(
-            lua_value!({
-                "async" => true,
-                "range" => range,
-            })
-        )
-    })?;
+    lsp_setup_func("lsp_rename", "vim.lsp.buf.rename")?;
+    lsp_setup_func("lsp_code_action", "vim.lsp.buf.code_action")?;
+
+    // lsp_setup_func_func("lsp_format", "vim.lsp.buf.format", |args| {
+    //     let range = match args.range {
+    //         0 => Value::Nil,
+    //         _ => lua_value!({
+    //             "start" => [args.line1, 0usize],
+    //             "end" => [args.line2, 0usize],
+    //         }),
+    //     };
+    //     Ok(
+    //         lua_value!({
+    //             "async" => true,
+    //             "range" => range,
+    //         })
+    //     )
+    // })?;
+
     Ok(())
 }
 
 fn lsp_setup_keymap() -> Result<()> {
-    let normal_keymap = nvim_keymap!(
-        (".d" => "LspGotoDefinition"),
-        (".D" => "LspGotoDeclaration"),
-        (".i" => "LspGotoDeclaration"),
-        (".t" => "LspGotoDeclaration"),
-        (".r" => "LspGotoReference"),
-        (".q" => "LspDiagnosticList"),
-        (".," => "LspPeekDiagnostic"),
-        (".." => "LspHover"),
-        (".s" => "LspSignatureHelp"),
-        (".ca" => "LspCodeAction"),
-        (".cr" => "LspRename"),
-        (".cf" => "LspFormat"),
+    let insert_keymap = nvim_keymap!(
+        ("<C-k>" => ! lua_registry_named_function("lsp_hover")),
+        ("<C-l>" => ! lua_registry_named_function("lsp_signature_help")),
     );
-    for mode in [Mode::Normal, Mode::Visual].iter() {
-        setup_buf_keymap(&mut Buffer::current(), *mode, normal_keymap.clone())?;
-    }
+    let normal_keymap = nvim_keymap!(
+        (".d" => ! lua_registry_named_function("lsp_goto_definition")),
+        (".D" => ! lua_registry_named_function("lsp_goto_declaration")),
+        (".i" => ! lua_registry_named_function("lsp_goto_implementation")),
+        (".t" => ! lua_registry_named_function("lsp_goto_type_definition")),
+        (".r" => ! lua_registry_named_function("lsp_goto_references")),
+        (".q" => ! lua_registry_named_function("lsp_diagnostic_list")),
+        (".," => ! lua_registry_named_function("lsp_peek_diagnostic")),
+        (".ca" => ! lua_registry_named_function("lsp_code_action")),
+        (".cr" => ! lua_registry_named_function("lsp_rename")),
+        (".cf" => ! lua_registry_named_function("lsp_format")),
+
+        ("<C-k>" => ! lua_registry_named_function("lsp_hover")),
+        ("<C-l>" => ! lua_registry_named_function("lsp_signature_help")),
+    );
+    setup_buf_keymap(&mut Buffer::current(), Mode::Visual, normal_keymap.clone())?;
+    setup_buf_keymap(&mut Buffer::current(), Mode::Normal, normal_keymap)?;
+    setup_buf_keymap(&mut Buffer::current(), Mode::Insert, insert_keymap)?;
     Ok(())
 }
 
