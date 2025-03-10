@@ -91,9 +91,13 @@ fn clear_keymap(mode: Mode) -> Result<()> {
     Ok(())
 }
 
-pub fn setup_keymap(mode: Mode, keymap: NvimKeymap) -> Result<()> {
+pub fn setup_keymap_clean(mode: Mode, keymap: NvimKeymap) -> Result<()> {
     clear_keymap(mode)?;
+    setup_keymap(mode, keymap)?;
+    Ok(())
+}
 
+pub fn setup_keymap(mode: Mode, keymap: NvimKeymap) -> Result<()> {
     for (binding, action) in keymap.into_iter() {
         let rhs = match action {
             NvimAction::Keys(k) => k,
@@ -148,8 +152,6 @@ fn clear_buf_keymap(buf: &mut Buffer, mode: Mode) -> Result<()> {
 }
 
 pub fn setup_buf_keymap(buf: &mut Buffer, mode: Mode, keymap: NvimKeymap) -> Result<()> {
-    // clear_buf_keymap(buf, mode)?;
-
     for (binding, action) in keymap.into_iter() {
         let rhs = match action {
             NvimAction::Keys(k) => k,
@@ -212,9 +214,10 @@ macro_rules! nvim_keymap {
         ($str.to_string(), nvim_action!($( $action )*))
     }};
 
-    ($( $item:tt ),* $(,)?) => {
+    ($( $item:tt ),* $(,)?) => {{
+        use $crate::keymap_remapping::NvimKeymap;
         NvimKeymap::from([
             $( nvim_keymap!(@inner $item) ),*
         ])
-    };
+    }};
 }

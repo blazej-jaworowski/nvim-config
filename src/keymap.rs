@@ -1,5 +1,6 @@
-use crate::keymap_remapping::{setup_keymap, NvimKeymap};
+use crate::keymap_remapping::{setup_keymap, setup_keymap_clean, NvimKeymap};
 use crate::plugins::leap::leap;
+use crate::plugins::spectre::{spectre_toggle, spectre_open_file_search, spectre_open_visual};
 use crate::plugins::neoscroll::neoscroll;
 use crate::nvim_keymap;
 use crate::nvim::api::types::Mode;
@@ -40,10 +41,12 @@ fn motion_keymap() -> NvimKeymap {
         ("d"), ("y"),
         ("D"), ("Y"),
         ("p"), ("P"),
+        ("\""),
 
         // Other
         ("<CR>"),
         (" e" => "Dirbuf ."),
+        ("<C-j>" => "ToggleTerm"),
 
         // Undo
         ("u"), ("U" => ["<C-r>"]),
@@ -53,7 +56,17 @@ fn motion_keymap() -> NvimKeymap {
         ("/"),
         ("zf" => "TelescopeCall find_files"),
         ("zd" => "TelescopeCall live_grep"),
+        ("?" => "TelescopeCall current_buffer_fuzzy_find"),
+
+        ("RR" => ! spectre_toggle()),
+        ("Rf" => ! spectre_open_file_search()),
     ]
+}
+
+fn terminal_keymap() -> NvimKeymap {
+    nvim_keymap!{
+        ("<ESC>" => ["<C-\\><C-n>"]),
+    }
 }
 
 pub fn setup_keymaps() {
@@ -65,8 +78,11 @@ pub fn setup_keymaps() {
     let keymap = motion_keymap();
     for mode in motion_modes {
         let keymap = keymap.clone();
-        if let Err(e) = setup_keymap(mode, keymap) {
+        if let Err(e) = setup_keymap_clean(mode, keymap) {
             nvim::print!("Failed to setup motion keymap for {mode:?}: {e}");
         };
+    };
+    if let Err(e) = setup_keymap(Mode::Terminal, terminal_keymap()) {
+        nvim::print!("Failed to setup terminal keymap: {e}");
     };
 }

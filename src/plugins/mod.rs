@@ -7,6 +7,15 @@ pub mod leap;
 pub mod lsp;
 pub mod neoscroll;
 pub mod telescope;
+pub mod spectre;
+pub mod llm;
+
+fn setup_toggleterm() -> Result<()> {
+    utils::require_call_setup::<_, Value>("toggleterm", lua_value!({
+        "direction" => "tab",
+    }))?;
+    Ok(())
+}
 
 fn setup_autopairs() -> Result<()> {
     let plugin = lua_plugins::LuaPlugin::<(), ()>::builder()
@@ -85,5 +94,17 @@ pub fn setup_plugins() {
 
     if let Err(e) = lsp::setup_lsp() {
         nvim::print!("Failed to setup lsp: {e}");
+    }
+
+    if let Err(e) = setup_toggleterm() {
+        nvim::print!("Failed to setup toggleterm: {e}");
+    }
+
+    if let Err(e) = spectre::setup_spectre() {
+        nvim::print!("Failed to setup spectre: {e}");
+    }
+
+    if let Err(e) = llm::setup_codecompanion() {
+        nvim::print!("Failed to setup spectre: {e}");
     }
 }

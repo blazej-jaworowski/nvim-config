@@ -4,7 +4,7 @@ use crate::nvim;
 use crate::nvim::api::{Buffer, types::Mode};
 use crate::mlua::{self, Table, Function, Value, prelude::LuaResult};
 use crate::{lua_value, nvim_keymap};
-use crate::keymap_remapping::{NvimKeymap, setup_buf_keymap};
+use crate::keymap_remapping::setup_buf_keymap;
 
 fn lsp_setup_func(name: &str, path: &str) -> Result<()> {
     let func: Function = lua_get_global_value_path(path)?;
@@ -78,10 +78,17 @@ fn setup_rust(lspconfig: &Table) -> Result<()> {
     let rust_analyzer: Table = lspconfig.get("rust_analyzer")?;
     let setup: Function = rust_analyzer.get("setup")?;
 
-    let blink_cmp_capabilities: Table = utils::require_call_func(
-        "blink.cmp",
-        "get_lsp_capabilities", lua_value!({})
-    )?;
+    let blink_cmp: Table = utils::require_plugin("blink.cmp")?;
+    let blink_cmp_setup: Function = blink_cmp.get("setup")?;
+    let get_lsp_capabilities: Function = blink_cmp.get("get_lsp_capabilities")?;
+
+    blink_cmp_setup.call::<_, Value>(lua_value!({
+        "fuzzy" => {
+            "implementation" => "lua", // TODO: package rust implementation
+        },
+    }))?;
+
+    let blink_cmp_capabilities: Table = get_lsp_capabilities.call(lua_value!({}))?;
 
     lsp_define_commands()?;
     let on_attach = mlua::lua().create_function(|_: &mlua::Lua, _: ()| -> LuaResult<()> {

@@ -28,7 +28,7 @@ pub fn nvim_dir() -> PathBuf {
 }
 
 #[nvim::plugin]
-fn libnvim_config() -> nvim::Result<Dictionary> {
+fn nvim_config() -> nvim::Result<Dictionary> {
     let nvim_dir = nvim_dir();
 
     if let Err(e) = fs::create_dir_all(&nvim_dir) {
