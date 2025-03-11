@@ -74,10 +74,7 @@ fn lsp_setup_keymap() -> Result<()> {
     Ok(())
 }
 
-fn setup_rust(lspconfig: &Table) -> Result<()> {
-    let rust_analyzer: Table = lspconfig.get("rust_analyzer")?;
-    let setup: Function = rust_analyzer.get("setup")?;
-
+fn blink_cmp_capabilities<'lua>() -> Result<Table<'lua>> {
     let blink_cmp: Table = utils::require_plugin("blink.cmp")?;
     let blink_cmp_setup: Function = blink_cmp.get("setup")?;
     let get_lsp_capabilities: Function = blink_cmp.get("get_lsp_capabilities")?;
@@ -88,18 +85,17 @@ fn setup_rust(lspconfig: &Table) -> Result<()> {
         },
     }))?;
 
-    let blink_cmp_capabilities: Table = get_lsp_capabilities.call(lua_value!({}))?;
+    Ok(get_lsp_capabilities.call(lua_value!({}))?)
+}
 
-    lsp_define_commands()?;
-    let on_attach = mlua::lua().create_function(|_: &mlua::Lua, _: ()| -> LuaResult<()> {
-        _ = lsp_setup_keymap().inspect_err(|e| {
-            nvim::print!("Error while setting up lsp keymap: {e}");
-        });
-        Ok(())
+fn setup_lang(lang: &str, capabilities: &Table, lspconfig: &Table, on_attach: &Function) -> Result<()> {
+    let config: Table = lspconfig.get(lang).inspect_err(|_| {
+        nvim::print!("Missing lspconfig lang: {lang}");
     })?;
+    let setup: Function = config.get("setup")?;
 
     setup.call::<_, Value>(lua_value!({
-        "capabilities" => blink_cmp_capabilities,
+        "capabilities" => capabilities,
         "on_attach" => on_attach,
     }))?;
     
@@ -108,9 +104,23 @@ fn setup_rust(lspconfig: &Table) -> Result<()> {
 
 pub fn setup_lsp() -> Result<()> {
     let lspconfig: Table = utils::require_plugin("lspconfig")?;
+    lsp_define_commands()?;
 
-    setup_rust(&lspconfig).inspect_err(|_| {
-        nvim::print!("Failed to set up rust lsp");
+    let on_attach = mlua::lua().create_function(|_: &mlua::Lua, _: ()| -> LuaResult<()> {
+        _ = lsp_setup_keymap().inspect_err(|e| {
+            nvim::print!("Error while setting up lsp keymap: {e}");
+        });
+        Ok(())
+    })?;
+
+    let lsp_capabilities = blink_cmp_capabilities()?;
+
+    setup_lang("rust_analyzer", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
+        nvim::print!("Failed to set up rust_analyzer lsp");
+    })?;
+
+    setup_lang("clangd", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
+        nvim::print!("Failed to set up clangd lsp");
     })?;
 
     Ok(())
