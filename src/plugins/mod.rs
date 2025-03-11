@@ -5,10 +5,10 @@ use crate::mlua::Value;
 mod lua_plugins;
 pub mod leap;
 pub mod lsp;
-pub mod neoscroll;
 pub mod telescope;
 pub mod spectre;
 pub mod llm;
+pub mod cinnamon;
 
 fn setup_toggleterm() -> Result<()> {
     utils::require_call_setup::<_, Value>("toggleterm", lua_value!({
@@ -62,7 +62,15 @@ fn setup_tree_sitter() -> Result<()> {
     Ok(())
 }
 
+fn setup_native_settings() -> Result<()> {
+    nvim::api::set_option("number", true)?;
+    Ok(())
+}
+
 pub fn setup_plugins() {
+    if let Err(e) = setup_native_settings() {
+        nvim::print!("Failed to initialize native settings: {e}");
+    };
 
     if let Err(e) = setup_colorscheme() {
         nvim::print!("Failed to initialize colorscheme: {e}");
@@ -75,10 +83,6 @@ pub fn setup_plugins() {
     if let Err(e) = leap::setup_leap() {
         nvim::print!("Failed to initialize leap: {e}");
     };
-
-    if let Err(e) = neoscroll::setup_neoscroll() {
-        nvim::print!("Failed to setup neoscroll: {e}");
-    }
 
     if let Err(e) = telescope::setup_telescope() {
         nvim::print!("Failed to setup telescope: {e}");
@@ -105,6 +109,10 @@ pub fn setup_plugins() {
     }
 
     if let Err(e) = llm::setup_codecompanion() {
-        nvim::print!("Failed to setup spectre: {e}");
+        nvim::print!("Failed to setup codecompanion: {e}");
+    }
+
+    if let Err(e) = cinnamon::setup_cinnamon() {
+        nvim::print!("Failed to setup cinnamon: {e}");
     }
 }

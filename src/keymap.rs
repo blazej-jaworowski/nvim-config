@@ -1,7 +1,6 @@
 use crate::keymap_remapping::{setup_keymap, setup_keymap_clean, NvimKeymap};
 use crate::plugins::leap::leap;
 use crate::plugins::spectre::{spectre_toggle, spectre_open_file_search, spectre_open_visual};
-use crate::plugins::neoscroll::neoscroll;
 use crate::nvim_keymap;
 use crate::nvim::api::types::Mode;
 use crate::nvim;
@@ -10,12 +9,12 @@ fn motion_keymap() -> NvimKeymap {
     nvim_keymap![
         // Movement
         ("j" => ["h"]), ("k" => ["j"]), ("l" => ["k"]), (";" => ["l"]),
-        ("K" => ! neoscroll(10)), ("L" => ! neoscroll(-10)),
-        ("!" => ["^"]), ("$"),
-        ("w"), ("b"), ("e"),
-        ("f" => ! leap()),
-        ("gg"), ("G"),
-        ("<" => ["<C-o>"]), (">" => ["<C-i>"]),
+        ("K" => @ ["20j"]), ("L" => @ ["20k"]),
+        ("!" => @ ["^"]), (@ "$"),
+        (@ "w"), (@ "b"), (@ "e"),
+        ("f" => @ ! leap()),
+        (@ "gg"), (@ "G"),
+        ("<" => @ ["<C-o>"]), (">" => @ ["<C-i>"]),
 
         // Window focus
         (" j" => ["<C-w>h"]),
@@ -40,7 +39,7 @@ fn motion_keymap() -> NvimKeymap {
         ("S"),
         ("d"), ("y"),
         ("D"), ("Y"),
-        ("p"), ("P"),
+        (@ "p"), (@ "P"),
         ("\""),
 
         // Other
@@ -53,7 +52,7 @@ fn motion_keymap() -> NvimKeymap {
         (" u" => "UndotreeToggle"),
 
         // Search
-        ("/"),
+        (@ "/"),
         ("zf" => "TelescopeCall find_files"),
         ("zd" => "TelescopeCall live_grep"),
         ("?" => "TelescopeCall current_buffer_fuzzy_find"),

@@ -196,6 +196,12 @@ macro_rules! nvim_action {
         NvimAction::Function($func)
     }};
 
+    (@ $( $action:tt )* ) => {{
+        use $crate::plugins::cinnamon::wrap_action;
+        use $crate::keymap_remapping::NvimAction;
+        NvimAction::Function(wrap_action(nvim_action!($( $action )*)))
+    }};
+
     ($cmd:expr) => {{
         use $crate::keymap_remapping::NvimAction;
         NvimAction::Command($cmd.into())
@@ -207,6 +213,11 @@ macro_rules! nvim_keymap {
     (@inner ( $str:expr )) => {{
         use $crate::nvim_action;
         ($str.to_string(), nvim_action!([ $str ]))
+    }};
+
+    (@inner ( @ $str:expr )) => {{
+        use $crate::nvim_action;
+        ($str.to_string(), nvim_action!(@ [ $str ]))
     }};
 
     (@inner ( $str:expr => $( $action:tt )* )) => {{

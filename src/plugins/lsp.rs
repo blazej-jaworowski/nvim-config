@@ -54,16 +54,18 @@ fn lsp_setup_keymap() -> Result<()> {
         ("<C-l>" => ! lua_registry_named_function("lsp_signature_help")),
     );
     let normal_keymap = nvim_keymap!(
-        (".d" => ! lua_registry_named_function("lsp_goto_definition")),
-        (".D" => ! lua_registry_named_function("lsp_goto_declaration")),
-        (".i" => ! lua_registry_named_function("lsp_goto_implementation")),
-        (".t" => ! lua_registry_named_function("lsp_goto_type_definition")),
-        (".r" => ! lua_registry_named_function("lsp_goto_references")),
+        (".d" => @ ! lua_registry_named_function("lsp_goto_definition")),
+        (".D" => @ ! lua_registry_named_function("lsp_goto_declaration")),
+        (".i" => @ ! lua_registry_named_function("lsp_goto_implementation")),
+        (".t" => @ ! lua_registry_named_function("lsp_goto_type_definition")),
+        (".r" => @ ! lua_registry_named_function("lsp_goto_references")),
+
         (".q" => ! lua_registry_named_function("lsp_diagnostic_list")),
         (".," => ! lua_registry_named_function("lsp_peek_diagnostic")),
+
         (".ca" => ! lua_registry_named_function("lsp_code_action")),
         (".cr" => ! lua_registry_named_function("lsp_rename")),
-        (".cf" => ! lua_registry_named_function("lsp_format")),
+        // (".cf" => ! lua_registry_named_function("lsp_format")),
 
         ("<C-k>" => ! lua_registry_named_function("lsp_hover")),
         ("<C-l>" => ! lua_registry_named_function("lsp_signature_help")),
