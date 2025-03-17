@@ -17,6 +17,13 @@ fn setup_toggleterm() -> Result<()> {
     Ok(())
 }
 
+fn setup_termedit() -> Result<()> {
+    utils::require_call_setup::<_, Value>("term-edit", lua_value!({
+        "prompt_end" => "❯ ",
+    }))?;
+    Ok(())
+}
+
 fn setup_autopairs() -> Result<()> {
     let plugin = lua_plugins::LuaPlugin::<(), ()>::builder()
         .name("nvim-autopairs")
@@ -64,6 +71,12 @@ fn setup_tree_sitter() -> Result<()> {
 
 fn setup_native_settings() -> Result<()> {
     nvim::api::set_option("number", true)?;
+    nvim::api::set_option("scrolloff", 10)?;
+    nvim::api::set_option("guifont", "Hack Nerd Font:h9")?;
+    nvim::api::command("let g:neovide_cursor_animation_length = 0.05")?;
+    nvim::api::command("let g:neovide_cursor_trail_size = 0.3")?;
+    nvim::api::command("let g:neovide_scroll_animation_length = 0.1")?;
+    nvim::api::command("let g:cinnamon_disable = 0")?;
     Ok(())
 }
 
@@ -114,5 +127,9 @@ pub fn setup_plugins() {
 
     if let Err(e) = cinnamon::setup_cinnamon() {
         nvim::print!("Failed to setup cinnamon: {e}");
+    }
+
+    if let Err(e) = setup_termedit() {
+        nvim::print!("Failed to setup term-edit: {e}");
     }
 }
