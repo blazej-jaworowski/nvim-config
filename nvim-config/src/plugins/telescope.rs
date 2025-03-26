@@ -1,12 +1,19 @@
-use crate::{Result, Error};
-use crate::utils;
-use crate::nvim;
-use crate::mlua::{self, Table, Function, Value};
-use crate::nvim::api::{self, types::{CommandNArgs, CommandArgs}, opts::CreateCommandOpts};
-use crate::lua_value;
+use crate::{
+    Result, Error,
+    mlua::{self, Table, Function, Value},
+    nvim::{
+        self,
+        api::{
+            self,
+            types::{CommandNArgs, CommandArgs},
+            opts::CreateCommandOpts,
+        },
+    },
+    nvim_helper::{lua_value, lua_plugins::require_plugin},
+};
 
 pub fn setup_telescope() -> Result<()> {
-    let telescope: Table = utils::require_plugin("telescope")?;
+    let telescope: Table = require_plugin("telescope")?;
 
     let setup_func: Function = telescope.get("setup")?;
     _ = setup_func.call::<_, Value>(lua_value!({
@@ -37,12 +44,12 @@ pub fn setup_telescope() -> Result<()> {
     let load_extension: Function = telescope.get("load_extension")?;
     _ = load_extension.call::<_, Value>("fzf")?;
 
-    let builtin: Table = utils::require_plugin("telescope.builtin")?;
+    let builtin: Table = require_plugin("telescope.builtin")?;
     let builtin_key = mlua::lua().create_registry_value(builtin)?;
 
     api::create_user_command(
         "TelescopeCall",
-        utils::wrap_command(move |args: CommandArgs| -> Result<()> {
+        move |args: CommandArgs| -> Result<()> {
             let builtin: Table = mlua::lua().registry_value(&builtin_key)?;
 
             let [func_name,] = args.fargs.as_slice() else {
@@ -56,7 +63,7 @@ pub fn setup_telescope() -> Result<()> {
             _ = func.call::<_, Value>(mlua::lua().create_table()?)?;
 
             Ok(())
-        }),
+        },
         &CreateCommandOpts::builder().nargs(CommandNArgs::One).build()
     )?;
 

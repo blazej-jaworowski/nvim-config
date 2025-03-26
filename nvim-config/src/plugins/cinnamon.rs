@@ -1,10 +1,12 @@
-use std::rc::Rc;
-use crate::Result;
-use crate::utils;
-use crate::mlua::{self, Table, Function, Value};
+use crate::{
+    Result,
+    mlua::{self, Table, Function, Value},
+    nvim,
+    nvim_helper::{lua_value, lua_plugins::require_plugin},
+};
 use crate::keymap_remapping::{NvimAction, NvimKeymap};
-use crate::nvim;
-use crate::lua_value;
+
+use std::rc::Rc;
 
 fn wrap_keys(keys: String) -> Rc<dyn Fn() -> Result<()>> {
     Rc::new(move || {
@@ -43,6 +45,7 @@ pub fn wrap_action(action: NvimAction) -> Rc<dyn Fn() -> Result<()>> {
 }
 
 // Probably not to be used
+#[allow(dead_code)]
 pub fn wrap_keymap(keymap: NvimKeymap) -> NvimKeymap {
     keymap.into_iter().map(|(keys, action)| {
         (keys, NvimAction::Function(wrap_action(action)))
@@ -50,7 +53,7 @@ pub fn wrap_keymap(keymap: NvimKeymap) -> NvimKeymap {
 }
 
 pub fn setup_cinnamon() -> Result<()> {
-    let cinnamon: Table = utils::require_plugin("cinnamon")?;
+    let cinnamon: Table = require_plugin("cinnamon")?;
     let setup: Function = cinnamon.get("setup")?;
 
     _ = setup.call::<_, Value>(lua_value!({

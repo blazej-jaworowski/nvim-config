@@ -1,0 +1,13 @@
+[package]
+name = "nvim-config"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "nvim_config"
+crate-type = ["cdylib"]
+
+[dependencies]
+nvim-oxi = { version = "0.5.1", features = ["mlua", "neovim-0-10"] }
+thiserror = "2.0.11"
+nvim-api-helper = { path = "../nvim-api-helper" }

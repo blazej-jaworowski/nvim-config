@@ -7,11 +7,13 @@ use crate::nvim::api as api;
 use api::{types::Mode, opts::SetKeymapOpts, Buffer};
 use crate::nvim;
 
+pub type KeymapFunction = Rc<dyn Fn() -> Result<()>>;
+
 #[derive(Clone)]
 pub enum NvimAction {
     Keys(String),
     Command(String),
-    Function(Rc<dyn Fn() -> Result<()>>),
+    Function(KeymapFunction),
 }
 
 pub type NvimKeymap = HashMap<String, NvimAction>;

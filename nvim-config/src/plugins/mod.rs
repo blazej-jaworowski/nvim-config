@@ -1,25 +1,32 @@
-use crate::{lua_value, nvim_dir, utils, Result};
-use crate::nvim::{self, api::{self, opts::OptionOpts}};
-use crate::mlua::Value;
+use crate::{
+    Result,
+    nvim_helper::{
+        lua_value,
+        lua_plugins::require_call_setup,
+    },
+    nvim_dir,
+    nvim::{self, api::{self, opts::OptionOpts}},
+};
 
 mod lua_plugins;
 pub mod leap;
 pub mod lsp;
 pub mod telescope;
 pub mod spectre;
-pub mod llm;
 pub mod cinnamon;
 
 fn setup_toggleterm() -> Result<()> {
-    utils::require_call_setup::<_, Value>("toggleterm", lua_value!({
+    require_call_setup("toggleterm", lua_value!({
         "direction" => "tab",
+        "start_in_insert" => false,
     }))?;
     Ok(())
 }
 
 fn setup_termedit() -> Result<()> {
-    utils::require_call_setup::<_, Value>("term-edit", lua_value!({
+    require_call_setup("term-edit", lua_value!({
         "prompt_end" => "❯ ",
+        "feedkeys_delay" => 200,
     }))?;
     Ok(())
 }
@@ -33,7 +40,7 @@ fn setup_autopairs() -> Result<()> {
 }
 
 fn setup_dirbuf() -> Result<()> {
-    utils::require_call_setup::<[u8;0], Value>("dirbuf", [])?;
+    require_call_setup::<[u8;0]>("dirbuf", [])?;
     Ok(())
 }
 
@@ -51,8 +58,7 @@ fn setup_tree_sitter() -> Result<()> {
 
     api::set_option_value("runtimepath", modified_rtp, &OptionOpts::builder().build())?;
 
-    utils::require_call_setup::<_, Value>("nvim-treesitter.configs", lua_value!({
-        // "ensure_installed" => [ "c", "python", "lua" ],
+    require_call_setup("nvim-treesitter.configs", lua_value!({
         "auto_install" => false,
         "parser_install_dir" => tree_sitter_dir,
         "highlight" => {
@@ -72,11 +78,16 @@ fn setup_tree_sitter() -> Result<()> {
 fn setup_native_settings() -> Result<()> {
     nvim::api::set_option("number", true)?;
     nvim::api::set_option("scrolloff", 10)?;
-    nvim::api::set_option("guifont", "Hack Nerd Font:h9")?;
-    nvim::api::command("let g:neovide_cursor_animation_length = 0.05")?;
-    nvim::api::command("let g:neovide_cursor_trail_size = 0.3")?;
-    nvim::api::command("let g:neovide_scroll_animation_length = 0.1")?;
-    nvim::api::command("let g:cinnamon_disable = 0")?;
+
+    const ENABLE_NEOVIDE: bool = true;
+    if ENABLE_NEOVIDE {
+        nvim::api::set_option("guifont", "Hack Nerd Font:h9")?;
+        nvim::api::command("let g:neovide_cursor_animation_length = 0.05")?;
+        nvim::api::command("let g:neovide_cursor_trail_size = 0.3")?;
+        nvim::api::command("let g:neovide_scroll_animation_length = 0.1")?;
+        nvim::api::command("let g:cinnamon_disable = 0")?;
+    }
+
     Ok(())
 }
 
@@ -119,10 +130,6 @@ pub fn setup_plugins() {
 
     if let Err(e) = spectre::setup_spectre() {
         nvim::print!("Failed to setup spectre: {e}");
-    }
-
-    if let Err(e) = llm::setup_codecompanion() {
-        nvim::print!("Failed to setup codecompanion: {e}");
     }
 
     if let Err(e) = cinnamon::setup_cinnamon() {

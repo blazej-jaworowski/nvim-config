@@ -1,13 +1,31 @@
-use crate::Result;
-use crate::utils::{self, lua_get_global_value_path, lua_registry_named_function};
-use crate::nvim;
-use crate::nvim::api::{Buffer, types::Mode};
-use crate::mlua::{self, Table, Function, Value, prelude::LuaResult};
-use crate::{lua_value, nvim_keymap};
-use crate::keymap_remapping::setup_buf_keymap;
+use crate::{
+    Result,
+    nvim::{self, api::{Buffer, types::Mode}},
+    mlua::{self, Table, Function, Value, prelude::LuaResult},
+    nvim_helper::{
+        lua_value,
+        lua_plugins::require_plugin,
+        lua::lua_get_global_path,
+    },
+    nvim_keymap,
+    keymap_remapping::setup_buf_keymap,
+};
+
+use std::rc::Rc;
+
+
+pub fn lua_registry_named_function(name: &str) -> Rc<dyn Fn() -> Result<()>> {
+    let name = name.to_string();
+    Rc::new(move || {
+        let func: Function = mlua::lua().named_registry_value(&name)?;
+        _ = func.call::<_, Value>(lua_value!(()));
+
+        Ok(())
+    })
+}
 
 fn lsp_setup_func(name: &str, path: &str) -> Result<()> {
-    let func: Function = lua_get_global_value_path(path)?;
+    let func: Function = lua_get_global_path(path)?;
     mlua::lua().set_named_registry_value(name, func)?;
 
     Ok(())
@@ -77,7 +95,7 @@ fn lsp_setup_keymap() -> Result<()> {
 }
 
 fn blink_cmp_capabilities<'lua>() -> Result<Table<'lua>> {
-    let blink_cmp: Table = utils::require_plugin("blink.cmp")?;
+    let blink_cmp: Table = require_plugin("blink.cmp")?;
     let blink_cmp_setup: Function = blink_cmp.get("setup")?;
     let get_lsp_capabilities: Function = blink_cmp.get("get_lsp_capabilities")?;
 
@@ -105,7 +123,7 @@ fn setup_lang(lang: &str, capabilities: &Table, lspconfig: &Table, on_attach: &F
 }
 
 pub fn setup_lsp() -> Result<()> {
-    let lspconfig: Table = utils::require_plugin("lspconfig")?;
+    let lspconfig: Table = require_plugin("lspconfig")?;
     lsp_define_commands()?;
 
     let on_attach = mlua::lua().create_function(|_: &mlua::Lua, _: ()| -> LuaResult<()> {
@@ -123,6 +141,10 @@ pub fn setup_lsp() -> Result<()> {
 
     setup_lang("clangd", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
         nvim::print!("Failed to set up clangd lsp");
+    })?;
+
+    setup_lang("lua_ls", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
+        nvim::print!("Failed to set up lua_ls lsp");
     })?;
 
     Ok(())

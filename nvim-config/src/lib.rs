@@ -1,17 +1,25 @@
-mod error;
-mod utils;
 mod plugins;
 mod keymap;
 mod keymap_remapping;
 
-pub use error::{Result, Error};
+pub use nvim_api_helper as nvim_helper;
 
-use std::{backtrace::Backtrace, env, fs::{self, OpenOptions}, io::Write, panic, path::PathBuf};
-
-use nvim_oxi as nvim;
-use nvim::mlua as mlua;
+pub use nvim_helper::{
+    nvim, mlua,
+    lua_value,
+    Result, Error,
+};
 
 use nvim::{Dictionary, Function};
+
+use std::{
+    backtrace::Backtrace,
+    env,
+    fs::{self, OpenOptions},
+    io::Write,
+    panic,
+    path::PathBuf,
+};
 
 fn setup_config(_: ()) {
     nvim::print!("Setting up nvim-config");

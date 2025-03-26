@@ -1,8 +1,10 @@
+use crate::{
+    Result,
+    mlua::{self, Table, Function, Value},
+    nvim_helper::{lua_value, lua_plugins::require_plugin},
+};
+
 use std::rc::Rc;
-use crate::utils;
-use crate::lua_value;
-use crate::Result;
-use crate::mlua::{self, Table, Function, Value};
 
 pub fn spectre_toggle() -> Rc<dyn Fn() -> Result<()>> {
     Rc::new(|| {
@@ -12,6 +14,7 @@ pub fn spectre_toggle() -> Rc<dyn Fn() -> Result<()>> {
     })
 }
 
+#[allow(dead_code)]
 pub fn spectre_open_visual(select_word: bool) -> Rc<dyn Fn() -> Result<()>> {
     Rc::new(move || {
         let func: Function = mlua::lua().named_registry_value("spectre_open_visual_func")?;
@@ -33,7 +36,7 @@ pub fn spectre_open_file_search() -> Rc<dyn Fn() -> Result<()>> {
 pub fn setup_spectre() -> Result<()> {
     let lua = mlua::lua();
 
-    let spectre: Table = utils::require_plugin("spectre")?;
+    let spectre: Table = require_plugin("spectre")?;
 
     let toggle_func: Function = spectre.get("toggle")?;
     let open_visual_func: Function = spectre.get("open_visual")?;

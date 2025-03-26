@@ -1,11 +1,17 @@
+use crate::{
+    Result,
+    nvim::{self, api},
+    mlua::{self, Function, Value},
+    nvim_helper::{
+        lua_value,
+        lua_plugins::require_plugin,
+    },
+    keymap_remapping::KeymapFunction,
+};
+
 use std::rc::Rc;
 
-use crate::utils;
-use crate::{nvim::{self, api}, mlua, Result};
-use crate::mlua::{Function, Value};
-use crate::lua_value;
-
-pub fn leap() -> Rc<dyn Fn() -> Result<()>> {
+pub fn leap() -> KeymapFunction {
     Rc::new(|| {
         let func: Function = mlua::lua().named_registry_value("leap_func")?;
 
@@ -33,7 +39,7 @@ pub fn leap() -> Rc<dyn Fn() -> Result<()>> {
 }
 
 pub fn setup_leap() -> Result<()> {
-    let leap_func: Function = utils::require_get_func("leap", "leap")?;
+    let leap_func: Function = require_plugin("leap")?.get("leap")?;
     mlua::lua().set_named_registry_value("leap_func", leap_func)?;
     Ok(())
 }

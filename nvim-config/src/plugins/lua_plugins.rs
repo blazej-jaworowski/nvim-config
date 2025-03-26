@@ -1,11 +1,21 @@
-use std::marker::PhantomData;
-use std::rc::Rc;
+use crate::{
+    Result,
+    mlua::{
+        self,
+        Function,
+        IntoLuaMulti, FromLuaMulti,
+    },
+    nvim,
+    nvim_helper::{
+        lua_value,
+        lua_plugins::require_plugin,
+    },
+};
 
-use crate::Result;
-use crate::mlua::{self, IntoLuaMulti, FromLuaMulti};
-use crate::nvim;
-use crate::utils;
-use crate::lua_value;
+use std::{
+    marker::PhantomData,
+    rc::Rc,
+};
 
 pub struct LuaPlugin<'lua, A = (), R = ()>
 where
@@ -81,7 +91,9 @@ R: FromLuaMulti<'lua>,
         };
 
         let result: R = if let Some(f) = &self.setup_func {
-            utils::require_call_func(&self.name, f, arg)?
+            require_plugin(&self.name)?
+                .get::<&str, Function>(&*f)?
+                .call(arg)?
         } else {
             if self.post_func.is_some() {
                 nvim::print!("No setup_func, but post_func given. Ignoring it.");

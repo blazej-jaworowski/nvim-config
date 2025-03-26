@@ -1,6 +1,6 @@
 use crate::keymap_remapping::{setup_keymap, setup_keymap_clean, NvimKeymap};
 use crate::plugins::leap::leap;
-use crate::plugins::spectre::{spectre_toggle, spectre_open_file_search, spectre_open_visual};
+use crate::plugins::spectre::{spectre_toggle, spectre_open_file_search};
 use crate::nvim_keymap;
 use crate::nvim::api::types::Mode;
 use crate::nvim;
