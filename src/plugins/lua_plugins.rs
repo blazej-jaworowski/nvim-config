@@ -92,7 +92,7 @@ R: FromLuaMulti<'lua>,
 
         let result: R = if let Some(f) = &self.setup_func {
             require_plugin(&self.name)?
-                .get::<&str, Function>(&*f)?
+                .get::<&str, Function>(f)?
                 .call(arg)?
         } else {
             if self.post_func.is_some() {
