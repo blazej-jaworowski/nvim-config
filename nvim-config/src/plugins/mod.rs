@@ -1,3 +1,11 @@
+mod lua_plugins;
+pub mod leap;
+pub mod lsp;
+pub mod telescope;
+pub mod spectre;
+pub mod cinnamon;
+
+
 use crate::{
     Result,
     nvim_helper::{
@@ -8,12 +16,6 @@ use crate::{
     nvim::{self, api::{self, opts::OptionOpts}},
 };
 
-mod lua_plugins;
-pub mod leap;
-pub mod lsp;
-pub mod telescope;
-pub mod spectre;
-pub mod cinnamon;
 
 fn setup_toggleterm() -> Result<()> {
     require_call_setup("toggleterm", lua_value!({

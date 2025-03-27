@@ -18,7 +18,7 @@ pub fn lua_registry_named_function(name: &str) -> Rc<dyn Fn() -> Result<()>> {
     let name = name.to_string();
     Rc::new(move || {
         let func: Function = mlua::lua().named_registry_value(&name)?;
-        _ = func.call::<_, Value>(lua_value!(()));
+        _ = func.call::<_, Value>(());
 
         Ok(())
     })

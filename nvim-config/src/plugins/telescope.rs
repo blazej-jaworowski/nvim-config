@@ -29,7 +29,7 @@ pub fn setup_telescope() -> Result<()> {
                 "--hidden",
                 "--glob", "!**/.git/*"
             ],
-            "path_display" => [ "smart" ],
+            "path_display" => [ "truncate" ],
         },
         "extensions" => {
             "fzf" => {
