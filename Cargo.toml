@@ -2,6 +2,5 @@
 members = [
     "nvim-config",
     "nvim-api-helper",
-    "nvim-rig",
 ]
 resolver = "2"

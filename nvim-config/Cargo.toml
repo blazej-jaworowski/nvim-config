@@ -10,3 +10,4 @@ crate-type = ["cdylib"]
 [dependencies]
 thiserror = "2.0.11"
 nvim-api-helper = { path = "../nvim-api-helper" }
+# nvim-rig = { path = "../nvim-rig" }
