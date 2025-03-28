@@ -4,13 +4,11 @@ mod keymap_remapping;
 
 pub use nvim_api_helper as nvim_helper;
 
-pub use nvim_helper::{
-    nvim, mlua,
-    lua_value,
+use nvim_helper::{
+    nvim::{self, Dictionary, Function},
+    mlua,
     Result, Error,
 };
-
-use nvim::{Dictionary, Function};
 
 use std::{
     backtrace::Backtrace,
@@ -35,7 +33,7 @@ pub fn nvim_dir() -> PathBuf {
     }
 }
 
-#[nvim::plugin]
+#[nvim::plugin(nvim_oxi = nvim)]
 fn nvim_config() -> nvim::Result<Dictionary> {
     let nvim_dir = nvim_dir();
 
