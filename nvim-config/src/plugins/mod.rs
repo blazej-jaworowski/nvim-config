@@ -6,6 +6,8 @@ pub mod spectre;
 pub mod cinnamon;
 
 
+use nvim_api_helper::{lua::lua_get_global_path, mlua};
+
 use crate::{
     Result,
     nvim_helper::{
@@ -80,6 +82,25 @@ fn setup_tree_sitter() -> Result<()> {
 fn setup_native_settings() -> Result<()> {
     nvim::api::set_option("number", true)?;
     nvim::api::set_option("scrolloff", 10)?;
+    nvim::api::set_option("tabstop", 4)?;
+    nvim::api::set_option("shiftwidth", 4)?;
+    nvim::api::set_option("softtabstop", 4)?;
+    nvim::api::set_option("expandtab", true)?;
+
+    // Firenvim
+    mlua::lua().globals().set("firenvim_config", lua_value!({
+        "globalSettings" => {
+            "alt" => "all",
+        },
+        "localSettings" => {
+            ".*" => {
+                "takeover" => "never",
+            },
+        },
+    }))?;
+    if lua_get_global_path::<bool>("started_by_firenvim")? {
+        nvim::api::set_option("laststatus", 0)?;
+    }
 
     const ENABLE_NEOVIDE: bool = true;
     if ENABLE_NEOVIDE {
@@ -87,7 +108,7 @@ fn setup_native_settings() -> Result<()> {
         nvim::api::command("let g:neovide_cursor_animation_length = 0.05")?;
         nvim::api::command("let g:neovide_cursor_trail_size = 0.3")?;
         nvim::api::command("let g:neovide_scroll_animation_length = 0.1")?;
-        nvim::api::command("let g:cinnamon_disable = 0")?;
+        nvim::api::command("let g:cinnamon_disable = 1")?;
     }
 
     Ok(())
