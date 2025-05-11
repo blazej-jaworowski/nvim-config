@@ -58,7 +58,7 @@ pub fn setup_cinnamon() -> Result<()> {
 
     _ = setup.call::<_, Value>(lua_value!({
         "options" =>{
-            "delay" => 3,
+            "delay" => 2,
             "max_delta" => {
                 "line" => 10000,
                 "time" => 100,

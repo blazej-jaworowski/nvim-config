@@ -1,18 +1,15 @@
 use crate::{
-    Result,
-    nvim::{self, api::{Buffer, types::Mode}},
-    mlua::{self, Table, Function, Value, prelude::LuaResult},
-    nvim_helper::{
-        lua_value,
-        lua_plugins::require_plugin,
-        lua::lua_get_global_path,
-    },
-    nvim_keymap,
     keymap_remapping::setup_buf_keymap,
+    mlua::{self, prelude::LuaResult, Function, Table, Value},
+    nvim::{
+        self,
+        api::{types::Mode, Buffer},
+    },
+    nvim_helper::{lua::lua_get_global_path, lua_plugins::require_plugin, lua_value},
+    nvim_keymap, Result,
 };
 
 use std::rc::Rc;
-
 
 pub fn lua_registry_named_function(name: &str) -> Rc<dyn Fn() -> Result<()>> {
     let name = name.to_string();
@@ -47,21 +44,7 @@ fn lsp_define_commands() -> Result<()> {
     lsp_setup_func("lsp_rename", "vim.lsp.buf.rename")?;
     lsp_setup_func("lsp_code_action", "vim.lsp.buf.code_action")?;
 
-    // lsp_setup_func_func("lsp_format", "vim.lsp.buf.format", |args| {
-    //     let range = match args.range {
-    //         0 => Value::Nil,
-    //         _ => lua_value!({
-    //             "start" => [args.line1, 0usize],
-    //             "end" => [args.line2, 0usize],
-    //         }),
-    //     };
-    //     Ok(
-    //         lua_value!({
-    //             "async" => true,
-    //             "range" => range,
-    //         })
-    //     )
-    // })?;
+    lsp_setup_func("lsp_format", "vim.lsp.buf.format")?;
 
     Ok(())
 }
@@ -76,14 +59,17 @@ fn lsp_setup_keymap() -> Result<()> {
         (".D" => @ ! lua_registry_named_function("lsp_goto_declaration")),
         (".i" => @ ! lua_registry_named_function("lsp_goto_implementation")),
         (".t" => @ ! lua_registry_named_function("lsp_goto_type_definition")),
-        (".r" => @ ! lua_registry_named_function("lsp_goto_references")),
+        (".r" => "TelescopeCall lsp_references"),
 
-        (".q" => ! lua_registry_named_function("lsp_diagnostic_list")),
+        (".q" => "TelescopeCall diagnostics"),
         (".," => ! lua_registry_named_function("lsp_peek_diagnostic")),
 
-        (".ca" => ! lua_registry_named_function("lsp_code_action")),
-        (".cr" => ! lua_registry_named_function("lsp_rename")),
-        // (".cf" => ! lua_registry_named_function("lsp_format")),
+        (".k" => "TelescopeCall lsp_document_symbols"),
+        (".K" => "TelescopeCall lsp_workspace_symbols"),
+
+        (".a" => ! lua_registry_named_function("lsp_code_action")),
+        (".R" => ! lua_registry_named_function("lsp_rename")),
+        (".f" => ! lua_registry_named_function("lsp_format")),
 
         ("<C-k>" => ! lua_registry_named_function("lsp_hover")),
         ("<C-l>" => ! lua_registry_named_function("lsp_signature_help")),
@@ -103,12 +89,25 @@ fn blink_cmp_capabilities<'lua>() -> Result<Table<'lua>> {
         "fuzzy" => {
             "implementation" => "lua", // TODO: package rust implementation
         },
+        "keymap" => {
+            "preset" => "none",
+
+            "<C-space>" => [ "select_and_accept", "show", "fallback" ],
+            "<Down>" => [ "select_next", "fallback" ],
+            "<Up>" => [ "select_prev", "fallback" ],
+        },
     }))?;
 
     Ok(get_lsp_capabilities.call(lua_value!({}))?)
 }
 
-fn setup_lang(lang: &str, capabilities: &Table, lspconfig: &Table, on_attach: &Function) -> Result<()> {
+fn setup_lang_with_settings(
+    lang: &str,
+    capabilities: &Table,
+    lspconfig: &Table,
+    on_attach: &Function,
+    settings: Option<&Value>,
+) -> Result<()> {
     let config: Table = lspconfig.get(lang).inspect_err(|_| {
         nvim::print!("Missing lspconfig lang: {lang}");
     })?;
@@ -117,8 +116,20 @@ fn setup_lang(lang: &str, capabilities: &Table, lspconfig: &Table, on_attach: &F
     setup.call::<_, Value>(lua_value!({
         "capabilities" => capabilities,
         "on_attach" => on_attach,
+        "settings" => settings,
     }))?;
-    
+
+    Ok(())
+}
+
+fn setup_lang(
+    lang: &str,
+    capabilities: &Table,
+    lspconfig: &Table,
+    on_attach: &Function,
+) -> Result<()> {
+    setup_lang_with_settings(lang, capabilities, lspconfig, on_attach, None)?;
+
     Ok(())
 }
 
@@ -135,7 +146,20 @@ pub fn setup_lsp() -> Result<()> {
 
     let lsp_capabilities = blink_cmp_capabilities()?;
 
-    setup_lang("rust_analyzer", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
+    setup_lang_with_settings(
+        "rust_analyzer",
+        &lsp_capabilities,
+        &lspconfig,
+        &on_attach,
+        Some(&lua_value!({
+            "rust-analyzer" => {
+                "check" => {
+                    "command" => "clippy",
+                },
+            },
+        })),
+    )
+    .inspect_err(|_| {
         nvim::print!("Failed to set up rust_analyzer lsp");
     })?;
 
@@ -145,6 +169,14 @@ pub fn setup_lsp() -> Result<()> {
 
     setup_lang("lua_ls", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
         nvim::print!("Failed to set up lua_ls lsp");
+    })?;
+
+    setup_lang("ruff", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
+        nvim::print!("Failed to set up ruff");
+    })?;
+
+    setup_lang("basedpyright", &lsp_capabilities, &lspconfig, &on_attach).inspect_err(|_| {
+        nvim::print!("Failed to set up basedpyright");
     })?;
 
     Ok(())

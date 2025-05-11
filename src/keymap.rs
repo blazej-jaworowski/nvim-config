@@ -1,9 +1,12 @@
-use crate::keymap_remapping::{setup_keymap, setup_keymap_clean, NvimKeymap};
-use crate::plugins::leap::leap;
-use crate::plugins::spectre::{spectre_toggle, spectre_open_file_search};
-use crate::nvim_keymap;
-use crate::nvim::api::types::Mode;
-use crate::nvim;
+use crate::{
+    keymap_remapping::{setup_keymap, setup_keymap_clean, NvimKeymap},
+    nvim::{self, api::types::Mode},
+    nvim_keymap,
+    plugins::{
+        leap::leap,
+        spectre::{spectre_open_file_search, spectre_toggle},
+    },
+};
 
 fn motion_keymap() -> NvimKeymap {
     nvim_keymap![
@@ -14,7 +17,7 @@ fn motion_keymap() -> NvimKeymap {
         (@ "w"), (@ "b"), (@ "e"),
         ("f" => @ ! leap()),
         (@ "gg"), (@ "G"),
-        ("<" => @ ["<C-o>"]), (">" => @ ["<C-i>"]),
+        ("<" => ["<C-o>"]), (">" => ["<C-i>"]),
 
         // Window focus
         (" j" => ["<C-w>h"]),
@@ -38,14 +41,22 @@ fn motion_keymap() -> NvimKeymap {
         ("r"), ("s"), ("x"),
         ("S"),
         ("d"), ("y"),
-        ("D"), ("Y"),
+        ("D" => ["dd"]),
+        ("Y" => ["yy"]),
         (@ "p"), (@ "P"),
         ("\""),
 
         // Other
         ("<CR>"),
-        (" e" => "Dirbuf ."),
+        ("ze" => "Dirbuf ."),
         ("<C-j>" => "ToggleTerm"),
+
+        // Save etc.
+        (" s" => "w"),
+        (" a" => "q"),
+        (" A" => "q!"),
+        (" e" => "e"),
+        (" E" => "e!"),
 
         // Undo
         ("u"), ("U" => ["<C-r>"]),
@@ -53,6 +64,7 @@ fn motion_keymap() -> NvimKeymap {
 
         // Search
         (@ "/"),
+        ("hh" => "TelescopeCall buffers"),
         ("zf" => "TelescopeCall find_files"),
         ("zd" => "TelescopeCall live_grep"),
         ("?" => "TelescopeCall current_buffer_fuzzy_find"),
@@ -63,16 +75,13 @@ fn motion_keymap() -> NvimKeymap {
 }
 
 fn terminal_keymap() -> NvimKeymap {
-    nvim_keymap!{
+    nvim_keymap! {
         ("<ESC>" => ["<C-\\><C-n>"]),
     }
 }
 
 pub fn setup_keymaps() {
-    let motion_modes = [
-        Mode::Normal,
-        Mode::Visual,
-    ];
+    let motion_modes = [Mode::Normal, Mode::Visual];
 
     let keymap = motion_keymap();
     for mode in motion_modes {
@@ -80,7 +89,7 @@ pub fn setup_keymaps() {
         if let Err(e) = setup_keymap_clean(mode, keymap) {
             nvim::print!("Failed to setup motion keymap for {mode:?}: {e}");
         };
-    };
+    }
     if let Err(e) = setup_keymap(Mode::Terminal, terminal_keymap()) {
         nvim::print!("Failed to setup terminal keymap: {e}");
     };
