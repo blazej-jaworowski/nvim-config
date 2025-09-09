@@ -43,6 +43,11 @@ fn setup_autopairs() -> Result<()> {
     plugin.setup()
 }
 
+fn setup_guess_indent() -> Result<()> {
+    require_call_setup::<[u8;0]>("guess-indent", [])?;
+    Ok(())
+}
+
 fn setup_dirbuf() -> Result<()> {
     require_call_setup::<[u8;0]>("dirbuf", [])?;
     Ok(())
@@ -133,6 +138,10 @@ pub fn setup_plugins() {
 
     if let Err(e) = telescope::setup_telescope() {
         nvim::print!("Failed to setup telescope: {e}");
+    }
+
+    if let Err(e) = setup_guess_indent() {
+        nvim::print!("Failed to setup guess-indent: {e}");
     }
 
     if let Err(e) = setup_dirbuf() {
