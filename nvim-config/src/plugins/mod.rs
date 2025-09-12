@@ -1,86 +1,26 @@
-mod lua_plugins;
+pub mod cinnamon;
 pub mod leap;
 pub mod lsp;
-pub mod telescope;
+mod lua_plugin;
+mod plugin;
 pub mod spectre;
-pub mod cinnamon;
-
+pub mod telescope;
 
 use nvim_api_helper::{lua::lua_get_global_path, mlua};
 
 use crate::{
-    Result,
-    nvim_helper::{
-        lua_value,
-        lua_plugins::require_call_setup,
+    Result, lua_plugin,
+    nvim::{
+        self,
+        api::{self, opts::OptionOpts},
     },
     nvim_dir,
-    nvim::{self, api::{self, opts::OptionOpts}},
+    nvim_helper::lua_value,
+    plugins::{lua_plugin::LuaPlugin, plugin::Plugin},
 };
-
-
-fn setup_toggleterm() -> Result<()> {
-    require_call_setup("toggleterm", lua_value!({
-        "direction" => "tab",
-        "start_in_insert" => false,
-    }))?;
-    Ok(())
-}
-
-fn setup_termedit() -> Result<()> {
-    require_call_setup("term-edit", lua_value!({
-        "prompt_end" => "❯ ",
-        "feedkeys_delay" => 200,
-    }))?;
-    Ok(())
-}
-
-fn setup_autopairs() -> Result<()> {
-    let plugin = lua_plugins::LuaPlugin::<(), ()>::builder()
-        .name("nvim-autopairs")
-        .setup_func("setup")
-        .build();
-    plugin.setup()
-}
-
-fn setup_guess_indent() -> Result<()> {
-    require_call_setup::<[u8;0]>("guess-indent", [])?;
-    Ok(())
-}
-
-fn setup_dirbuf() -> Result<()> {
-    require_call_setup::<[u8;0]>("dirbuf", [])?;
-    Ok(())
-}
 
 fn setup_colorscheme() -> Result<()> {
     api::command("colorscheme gruvbox")?;
-    Ok(())
-}
-
-fn setup_tree_sitter() -> Result<()> {
-    let tree_sitter_dir = nvim_dir().join("tree_sitter");
-    let tree_sitter_dir = tree_sitter_dir.to_str().unwrap();
-
-    let current_rtp: String = api::get_option_value("runtimepath", &OptionOpts::builder().build())?;
-    let modified_rtp = format!("{tree_sitter_dir},{current_rtp}");
-
-    api::set_option_value("runtimepath", modified_rtp, &OptionOpts::builder().build())?;
-
-    require_call_setup("nvim-treesitter.configs", lua_value!({
-        "auto_install" => false,
-        "parser_install_dir" => tree_sitter_dir,
-        "highlight" => {
-            "enable" => true,
-        },
-        "indent" => {
-            "enable" => true,
-        },
-        "incremental_selection" => {
-            "enable" => true,
-        },
-    }))?;
-
     Ok(())
 }
 
@@ -93,16 +33,19 @@ fn setup_native_settings() -> Result<()> {
     nvim::api::set_option("expandtab", true)?;
 
     // Firenvim
-    mlua::lua().globals().set("firenvim_config", lua_value!({
-        "globalSettings" => {
-            "alt" => "all",
-        },
-        "localSettings" => {
-            ".*" => {
-                "takeover" => "never",
+    mlua::lua().globals().set(
+        "firenvim_config",
+        lua_value!({
+            "globalSettings" => {
+                "alt" => "all",
             },
-        },
-    }))?;
+            "localSettings" => {
+                ".*" => {
+                    "takeover" => "never",
+                },
+            },
+        }),
+    )?;
     if lua_get_global_path::<bool>("started_by_firenvim")? {
         nvim::api::set_option("laststatus", 0)?;
     }
@@ -120,16 +63,72 @@ fn setup_native_settings() -> Result<()> {
 }
 
 pub fn setup_plugins() {
+    let plugins: Vec<Box<dyn Plugin>> = vec![
+        lua_plugin!("nvim-autopairs"),
+        lua_plugin!("term-edit", {
+            "prompt_end" => "❯ ",
+            "feedkeys_delay" => 200,
+        }),
+        lua_plugin!("toggleterm", {
+            "direction" => "tab",
+            "start_in_insert" => false,
+        }),
+        lua_plugin!("guess-indent"),
+        lua_plugin!("dirbuf"),
+        Box::new(
+            LuaPlugin::<_, ()>::builder("nvim-treesitter.configs")
+                .pre_setup(|| {
+                    let tree_sitter_dir = nvim_dir().join("tree_sitter");
+                    let tree_sitter_dir = tree_sitter_dir.to_str().unwrap();
+
+                    let current_rtp: String =
+                        api::get_option_value("runtimepath", &OptionOpts::builder().build())?;
+                    let modified_rtp = format!("{tree_sitter_dir},{current_rtp}");
+
+                    api::set_option_value(
+                        "runtimepath",
+                        modified_rtp,
+                        &OptionOpts::builder().build(),
+                    )?;
+                    Ok(lua_value!({
+                        "auto_install" => false,
+                        "parser_install_dir" => tree_sitter_dir,
+                        "highlight" => {
+                            "enable" => true,
+                        },
+                        "indent" => {
+                            "enable" => true,
+                        },
+                        "incremental_selection" => {
+                            "enable" => true,
+                        },
+                    }))
+                })
+                .build(),
+        ),
+    ];
+
+    for plugin in plugins {
+        match plugin.setup() {
+            Ok(()) => {}
+            Err(plugin::PluginError::NotInstalled(name)) => {
+                nvim::print!("Plugin {name} doesn't seem to be installed")
+            }
+            Err(plugin::PluginError::DependencyMissing(name)) => {
+                nvim::print!("Dependency {name} seems to be missing")
+            }
+            Err(plugin::PluginError::Other(e)) => {
+                nvim::print!("Error occured: {e}")
+            }
+        }
+    }
+
     if let Err(e) = setup_native_settings() {
         nvim::print!("Failed to initialize native settings: {e}");
     };
 
     if let Err(e) = setup_colorscheme() {
         nvim::print!("Failed to initialize colorscheme: {e}");
-    };
-
-    if let Err(e) = setup_tree_sitter() {
-        nvim::print!("Failed to initialize treesitter: {e}");
     };
 
     if let Err(e) = leap::setup_leap() {
@@ -140,35 +139,11 @@ pub fn setup_plugins() {
         nvim::print!("Failed to setup telescope: {e}");
     }
 
-    if let Err(e) = setup_guess_indent() {
-        nvim::print!("Failed to setup guess-indent: {e}");
-    }
-
-    if let Err(e) = setup_dirbuf() {
-        nvim::print!("Failed to setup dirbuf: {e}");
-    }
-
-    if let Err(e) = setup_autopairs() {
-        nvim::print!("Failed to setup autopairs: {e}");
-    }
-
     if let Err(e) = lsp::setup_lsp() {
         nvim::print!("Failed to setup lsp: {e}");
     }
 
-    if let Err(e) = setup_toggleterm() {
-        nvim::print!("Failed to setup toggleterm: {e}");
-    }
-
-    if let Err(e) = spectre::setup_spectre() {
-        nvim::print!("Failed to setup spectre: {e}");
-    }
-
     if let Err(e) = cinnamon::setup_cinnamon() {
         nvim::print!("Failed to setup cinnamon: {e}");
-    }
-
-    if let Err(e) = setup_termedit() {
-        nvim::print!("Failed to setup term-edit: {e}");
     }
 }
