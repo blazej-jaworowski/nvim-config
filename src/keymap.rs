@@ -35,7 +35,7 @@ fn motion_keymap() -> NvimKeymap {
         ("o"), ("O"),
         ("v"), ("V"), ("<C-v>"),
         (":"),
-        ("<ESC>"),
+        ("<ESC>" => "noh"),
 
         // Editing
         ("r"), ("s"), ("x"),
@@ -49,6 +49,7 @@ fn motion_keymap() -> NvimKeymap {
         // Other
         ("<CR>"),
         ("ze" => "Dirbuf ."),
+        ("E" => "Dirbuf"),
         ("<C-j>" => "ToggleTerm"),
 
         // Save etc.
@@ -63,7 +64,7 @@ fn motion_keymap() -> NvimKeymap {
         (" u" => "UndotreeToggle"),
 
         // Search
-        (@ "/"),
+        ("/"),
         ("hh" => "TelescopeCall buffers"),
         ("zf" => "TelescopeCall find_files"),
         ("zd" => "TelescopeCall live_grep"),
